@@ -1,0 +1,74 @@
+{% extends '_layouts/cp' %}
+
+{% import '_includes/forms.twig' as forms %}
+
+{% set fullPageForm = true %}
+
+{% set title = title %}
+{% set selectedSubnavItem = 'sources' %}
+
+{% set crumbs = [
+    { label: 'Akeneo', url: url('akeneo') },
+    { label: 'Sources', url: url('akeneo/sources') },
+    { label: source.name, url: url('akeneo/sources/' ~ source.id) },
+] %}
+
+{% set tabs = {
+    settings: { label: 'Settings', url: url('akeneo/sources/' ~ source.id) },
+    fieldMapping: { label: 'Field Mapping', url: url('akeneo/sources/' ~ source.id ~ '/field-mapping') },
+} %}
+{% set selectedTab = 'fieldMapping' %}
+
+{% block content %}
+
+    <input type="hidden" name="action" value="akeneo/sources/save-field-mapping">
+    <input type="hidden" name="sourceId" value="{{ source.id }}">
+
+    {% if akeneoError %}
+        <div class="readable" style="margin-bottom: 24px;">
+            <blockquote class="note warning">
+                <p><strong>Could not connect to Akeneo API:</strong> {{ akeneoError }}</p>
+                <p>Akeneo attribute options will not be available until the connection is restored.</p>
+            </blockquote>
+        </div>
+    {% endif %}
+
+    {% set mappingsByHandle = {} %}
+    {% for mapping in mappings %}
+        {% set mappingsByHandle = mappingsByHandle|merge({ (mapping.craftFieldHandle): mapping.akeneoAttribute }) %}
+    {% endfor %}
+
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>Craft Field</th>
+                <th>Akeneo Attribute</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for field in craftFields %}
+                {% set currentValue = mappingsByHandle[field.handle] ?? '' %}
+                <tr>
+                    <td style="vertical-align: middle;">
+                        <strong>{{ field.name }}</strong>
+                        <span class="light"> — {{ field.handle }}</span>
+                        <input type="hidden" name="mappings[{{ loop.index0 }}][craftFieldHandle]" value="{{ field.handle }}">
+                    </td>
+                    <td>
+                        <div class="select fullwidth">
+                            <select name="mappings[{{ loop.index0 }}][akeneoAttribute]" class="fullwidth">
+                                <option value="">—</option>
+                                {% for attribute in akeneoAttributes %}
+                                    <option value="{{ attribute.code }}" {% if attribute.code == currentValue %}selected{% endif %}>
+                                        {{ attribute.label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock %}

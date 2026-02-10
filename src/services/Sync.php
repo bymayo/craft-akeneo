@@ -34,6 +34,11 @@ class Sync extends Component
         $this->client = $this->connect();
     }
 
+    public function getClient()
+    {
+        return $this->client;
+    }
+
     public function connect()
     {
 

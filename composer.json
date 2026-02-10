@@ -11,6 +11,7 @@
   },
   "require": {
     "php": ">=8.2",
+    "akeneo/api-php-client": "^11.0",
     "craftcms/cms": "^5.8.0"
   },
   "require-dev": {

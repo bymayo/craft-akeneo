@@ -6,29 +6,70 @@ use bymayo\akeneo\Plugin;
 
 use Craft;
 use craft\web\Controller;
+use yii\web\BadRequestHttpException;
 use yii\web\Response;
 
-/**
- * Base controller
- */
+use Akeneo\Pim\ApiClient\AkeneoPimClientBuilder;
+
 class SyncController extends Controller
 {
-    public $defaultAction = 'getProducts';
     protected array|int|bool $allowAnonymous = self::ALLOW_ANONYMOUS_NEVER;
 
-    /**
-     * akeneo/base action
-     */
-    public function actionGetProducts(): Response
+    public function actionTestConnection(): Response
     {
-        $products = Plugin::getInstance()->sync->getProducts(true);
-        return $this->redirect(Craft::$app->request->referrer);
+        $this->requirePostRequest();
+
+        try {
+            $settings = Plugin::getInstance()->getSettings();
+
+            $clientBuilder = new AkeneoPimClientBuilder(
+                Craft::parseEnv($settings->apiUrl)
+            );
+
+            $client = $clientBuilder->buildAuthenticatedByPassword(
+                Craft::parseEnv($settings->clientId),
+                Craft::parseEnv($settings->secretKey),
+                Craft::parseEnv($settings->username),
+                Craft::parseEnv($settings->password)
+            );
+
+            $client->getAttributeApi()->listPerPage(1);
+
+            return $this->asJson([
+                'success' => true,
+                'message' => 'Connected to Akeneo successfully.',
+            ]);
+        } catch (\Throwable $e) {
+            return $this->asJson([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ]);
+        }
     }
 
-    public function actionGetProductsDataOnly(): Response
+    public function actionRun(): Response
     {
-        $products = Plugin::getInstance()->sync->getProducts(false);
-        return $this->redirect(Craft::$app->request->referrer);
-    }
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
 
+        $request = Craft::$app->getRequest();
+        $type = $request->getRequiredBodyParam('type');
+        $sourceId = (int) $request->getRequiredBodyParam('sourceId');
+
+        $source = Plugin::getInstance()->sources->getSourceById($sourceId);
+
+        if (!$source) {
+            throw new BadRequestHttpException('Invalid source ID');
+        }
+
+        $sync = Plugin::getInstance()->sync;
+
+        match ($type) {
+            'data' => $sync->getProducts(false),
+            'images', 'all' => $sync->getProducts(true),
+            default => throw new BadRequestHttpException('Invalid sync type'),
+        };
+
+        return $this->asJson(['success' => true]);
+    }
 }

@@ -1,0 +1,78 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Sources' %}
+{% set selectedSubnavItem = 'sources' %}
+
+{% block actionButton %}
+    <a href="{{ url('akeneo/sources/new') }}" class="btn submit">{{ 'New Source'|t('akeneo') }}</a>
+{% endblock %}
+
+{% block content %}
+
+    {% if sources|length %}
+        <div id="sources">
+            <table id="sources-table" class="data fullwidth">
+                <thead>
+                    <tr>
+                        <th>{{ 'Name'|t('akeneo') }}</th>
+                        <th>{{ 'Content Type'|t('akeneo') }}</th>
+                        <th>{{ 'Type'|t('akeneo') }}</th>
+                        <th>{{ 'Action'|t('akeneo') }}</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for source in sources %}
+                        <tr data-id="{{ source.id }}" data-name="{{ source.title }}">
+                            <td><a href="{{ url(source.url) }}">{{ source.title }}</a></td>
+                            <td>{{ source.contentType }}</td>
+                            <td>{{ source.type }}</td>
+                            <td class="thin">
+                                <div class="btngroup">
+                                    <button type="button" class="btn menubtn">{{ 'Sync'|t('akeneo') }}</button>
+                                    <div class="menu">
+                                        <ul>
+                                            <li><a data-sync-type="data" data-source-id="{{ source.id }}">{{ 'Sync Data'|t('akeneo') }}</a></li>
+                                            <li><a data-sync-type="images" data-source-id="{{ source.id }}">{{ 'Sync Images'|t('akeneo') }}</a></li>
+                                            <li><a data-sync-type="all" data-source-id="{{ source.id }}">{{ 'Sync All'|t('akeneo') }}</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="thin"><a class="delete icon" title="{{ 'Delete'|t('app') }}"></a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>{{ 'No sources exist yet.'|t('akeneo') }}</p>
+    {% endif %}
+
+{% endblock %}
+
+{% js %}
+    new Craft.AdminTable({
+        tableSelector: '#sources-table',
+        deleteAction: 'akeneo/sources/delete',
+        confirmDeleteMessage: '{{ 'Are you sure you want to delete this source?'|t('akeneo') }}',
+    });
+
+    document.querySelectorAll('[data-sync-type]').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            var type = this.dataset.syncType;
+            var sourceId = this.dataset.sourceId;
+            var label = this.textContent;
+
+            Craft.postActionRequest('akeneo/sync/run', { type: type, sourceId: sourceId }, function(response) {
+                if (response.success) {
+                    Craft.cp.displayNotice(label + ' jobs added to the queue.');
+                } else {
+                    Craft.cp.displayError(label + ' failed.');
+                }
+            });
+        });
+    });
+{% endjs %}

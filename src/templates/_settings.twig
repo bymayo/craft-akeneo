@@ -41,11 +41,74 @@
     required: true,
 }) }}
 
-{{ forms.passwordField({
+{{ forms.autosuggestField({
     label: 'Password',
     instructions: 'The Akeneo API password.',
     id: 'password',
     name: 'password',
     value: settings.password,
+    suggestEnvVars: true,
     required: true,
 }) }}
+
+<hr>
+
+<div class="field">
+    <div class="heading">
+        <label>Connection Status</label>
+        <div class="instructions"><p>Test the connection to your Akeneo PIM instance using the saved credentials.</p></div>
+    </div>
+    <div class="input">
+        <button type="button" class="btn" onclick="window._testAkeneoConnection(this)">Test Connection</button>
+        <div class="akeneo-connection-result" style="display: none; margin-top: 10px; padding: 10px 14px; border-radius: 4px;"></div>
+    </div>
+</div>
+
+<script type="text/javascript">
+window._testAkeneoConnection = function(btn) {
+    var result = btn.nextElementSibling;
+    btn.classList.add('loading');
+    btn.disabled = true;
+    result.style.display = 'none';
+    result.textContent = '';
+
+    var url = Craft.actionUrl + '/akeneo/sync/test-connection';
+    var body = new FormData();
+    body.append(Craft.csrfTokenName, Craft.csrfTokenValue);
+
+    fetch(url, {
+        method: 'POST',
+        headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+        body: body
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+        result.style.display = 'block';
+
+        if (data && data.success) {
+            result.textContent = data.message;
+            result.style.background = '#E8F5E9';
+            result.style.color = '#2E7D32';
+        } else {
+            result.textContent = (data && data.message) ? data.message : 'Connection failed.';
+            result.style.background = '#FDECEA';
+            result.style.color = '#C62828';
+        }
+    })
+    .catch(function() {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+        result.style.display = 'block';
+        result.textContent = 'Connection failed.';
+        result.style.background = '#FDECEA';
+        result.style.color = '#C62828';
+    });
+};
+
+var _btn = document.querySelector('[onclick*="_testAkeneoConnection"]');
+if (_btn) {
+    window._testAkeneoConnection(_btn);
+}
+</script>

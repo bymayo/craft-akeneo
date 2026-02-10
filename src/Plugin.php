@@ -4,8 +4,11 @@ namespace bymayo\akeneo;
 
 use Craft;
 use craft\helpers\FileHelper;
+use craft\events\RegisterUrlRulesEvent;
 use craft\services\Dashboard;
+use craft\web\UrlManager;
 use bymayo\akeneo\models\Settings;
+use bymayo\akeneo\services\Sources;
 use bymayo\akeneo\services\Sync;
 use bymayo\akeneo\widgets\SyncWidget;
 use craft\base\Plugin as BasePlugin;
@@ -16,10 +19,13 @@ use yii\base\Event;
  *
  * @method static Plugin getInstance()
  * @method Settings getSettings()
+ * @property Sources $sources
  */
 class Plugin extends BasePlugin
 {
+    public string $schemaVersion = '1.2.0';
     public bool $hasCpSettings = true;
+    public bool $hasCpSection = true;
 
     public static function log($message)
     {
@@ -34,6 +40,7 @@ class Plugin extends BasePlugin
 
         $this->setComponents([
             'sync' => Sync::class,
+            'sources' => Sources::class,
         ]);
 
         $this->attachEventHandlers();
@@ -53,6 +60,13 @@ class Plugin extends BasePlugin
         );
     }
 
+    public function getCpNavItem(): ?array
+    {
+        $item = parent::getCpNavItem();
+
+        return $item;
+    }
+
     protected function createSettingsModel(): Settings
     {
         return new Settings();
@@ -68,6 +82,16 @@ class Plugin extends BasePlugin
 
     private function attachEventHandlers(): void
     {
-
+        Event::on(
+            UrlManager::class,
+            UrlManager::EVENT_REGISTER_CP_URL_RULES,
+            function (RegisterUrlRulesEvent $event) {
+                $event->rules['akeneo'] = 'akeneo/sources/index';
+                $event->rules['akeneo/sources'] = 'akeneo/sources/index';
+                $event->rules['akeneo/sources/new'] = 'akeneo/sources/edit';
+                $event->rules['akeneo/sources/<sourceId:\d+>'] = 'akeneo/sources/edit';
+                $event->rules['akeneo/sources/<sourceId:\d+>/field-mapping'] = 'akeneo/sources/field-mapping';
+            }
+        );
     }
 }
