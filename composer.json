@@ -1,0 +1,41 @@
+{
+  "name": "bymayo/akeneo",
+  "type": "craft-plugin",
+  "license": "proprietary",
+  "support": {
+    "email": "jason@bymayo.co.uk",
+    "issues": "https://github.com/bymayo/craft-akeneo/issues?state=open",
+    "source": "https://github.com/bymayo/craft-akeneo",
+    "docs": "https://github.com/bymayo/craft-akeneo",
+    "rss": "https://github.com/bymayo/craft-akeneo/releases.atom"
+  },
+  "require": {
+    "php": ">=8.2",
+    "craftcms/cms": "^5.8.0"
+  },
+  "require-dev": {
+    "craftcms/phpstan": "dev-main"
+  },
+  "autoload": {
+    "psr-4": {
+      "bymayo\\akeneo\\": "src/"
+    }
+  },
+  "extra": {
+    "handle": "akeneo",
+    "name": "Akeneo",
+    "developer": "ByMayo",
+    "documentationUrl": "https://github.com/bymayo/craft-akeneo",
+    "class": "bymayo\\akeneo\\Plugin"
+  },
+  "config": {
+    "sort-packages": true,
+    "platform": {
+      "php": "8.2"
+    },
+    "allow-plugins": {
+      "yiisoft/yii2-composer": true,
+      "craftcms/plugin-installer": true
+    }
+  }
+}

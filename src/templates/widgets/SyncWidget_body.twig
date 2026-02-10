@@ -1,0 +1,13 @@
+<form method="post">
+    {{ csrfInput() }}
+    {{ actionInput('akeneo/sync/get-products') }}
+    <button type="submit" class="btn submit">{{ "Sync Products (Images & Data)"|t }}</button>
+</form>
+
+<br>
+
+<form method="post">
+    {{ csrfInput() }}
+    {{ actionInput('akeneo/sync/get-products-data-only') }}
+    <button type="submit" class="btn submit">{{ "Sync Products (Data only)"|t }}</button>
+</form>

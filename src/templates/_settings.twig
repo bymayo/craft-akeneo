@@ -1,0 +1,51 @@
+{% import '_includes/forms.twig' as forms %}
+
+{{ forms.autosuggestField({
+    first: true,
+    label: 'API URL',
+    instructions: 'The base URL of your Akeneo PIM instance.',
+    id: 'apiUrl',
+    name: 'apiUrl',
+    value: settings.apiUrl,
+    suggestEnvVars: true,
+    required: true,
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'Client ID',
+    instructions: 'The Akeneo API client ID.',
+    id: 'clientId',
+    name: 'clientId',
+    value: settings.clientId,
+    suggestEnvVars: true,
+    required: true,
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'Secret Key',
+    instructions: 'The Akeneo API secret key.',
+    id: 'secretKey',
+    name: 'secretKey',
+    value: settings.secretKey,
+    suggestEnvVars: true,
+    required: true,
+}) }}
+
+{{ forms.autosuggestField({
+    label: 'Username',
+    instructions: 'The Akeneo API username.',
+    id: 'username',
+    name: 'username',
+    value: settings.username,
+    suggestEnvVars: true,
+    required: true,
+}) }}
+
+{{ forms.passwordField({
+    label: 'Password',
+    instructions: 'The Akeneo API password.',
+    id: 'password',
+    name: 'password',
+    value: settings.password,
+    required: true,
+}) }}
