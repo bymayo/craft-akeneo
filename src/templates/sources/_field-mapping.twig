@@ -33,6 +33,20 @@
         </div>
     {% endif %}
 
+    {# Build selectize options array with optgroups #}
+    {% set akeneoSelectOptions = [
+        { value: '', label: "Don't import" },
+        { value: '__static__', label: 'Static Value' },
+    ] %}
+    {% set lastType = null %}
+    {% for attribute in akeneoAttributes %}
+        {% if (attribute.type ?? '') != lastType %}
+            {% set lastType = attribute.type ?? '' %}
+            {% set akeneoSelectOptions = akeneoSelectOptions|merge([{ optgroup: lastType ?: 'Other' }]) %}
+        {% endif %}
+        {% set akeneoSelectOptions = akeneoSelectOptions|merge([{ value: attribute.code, label: attribute.label }]) %}
+    {% endfor %}
+
     {# Build lookup of existing mappings by handle #}
     {% set mappingsByHandle = {} %}
     {% for mapping in mappings %}
@@ -81,32 +95,22 @@
                                                 </thead>
                                                 <tbody>
                                                     {% for colId, col in field.columns %}
+                                                        {% set colAkeneo = row[colId].akeneo ?? '' %}
+                                                        {% set colStatic = row[colId].static ?? '' %}
+                                                        {% set colValue = colAkeneo == '__static__' or (colStatic and not colAkeneo) ? '__static__' : colAkeneo %}
                                                         <tr>
                                                             <td style="vertical-align: middle; white-space: nowrap;">
                                                                 {{ col.heading }}
                                                             </td>
                                                             <td>
-                                                                <div class="select fullwidth">
-                                                                    <select name="mappings[{{ idx }}][tableRows][{{ loop.parent.loop.index0 }}][{{ colId }}][akeneo]" class="fullwidth">
-                                                                        <option value="">Don't import</option>
-                                                                        <option value="__static__" {% if (row[colId].akeneo ?? '') == '__static__' or ((row[colId].static ?? '') and (row[colId].akeneo ?? '') == '') %}selected{% endif %}>Static Value</option>
-                                                                        {% set currentGroup = null %}
-                                                                        {% for attribute in akeneoAttributes %}
-                                                                            {% if (attribute.type ?? '') != currentGroup %}
-                                                                                {% if currentGroup is not null %}</optgroup>{% endif %}
-                                                                                {% set currentGroup = attribute.type ?? '' %}
-                                                                                <optgroup label="{{ attribute.type ?? 'Other' }}">
-                                                                            {% endif %}
-                                                                            <option value="{{ attribute.code }}" {% if attribute.code == (row[colId].akeneo ?? '') %}selected{% endif %}>
-                                                                                {{ attribute.label }}
-                                                                            </option>
-                                                                        {% endfor %}
-                                                                        {% if currentGroup is not null %}</optgroup>{% endif %}
-                                                                    </select>
-                                                                </div>
+                                                                {{ forms.selectize({
+                                                                    name: 'mappings[' ~ idx ~ '][tableRows][' ~ loop.parent.loop.index0 ~ '][' ~ colId ~ '][akeneo]',
+                                                                    value: colValue,
+                                                                    options: akeneoSelectOptions,
+                                                                }) }}
                                                             </td>
                                                             <td>
-                                                                <input type="text" name="mappings[{{ idx }}][tableRows][{{ loop.parent.loop.index0 }}][{{ colId }}][static]" value="{{ row[colId].static ?? '' }}" class="fullwidth text" placeholder="Enter value…">
+                                                                <input type="text" name="mappings[{{ idx }}][tableRows][{{ loop.parent.loop.index0 }}][{{ colId }}][static]" value="{{ colStatic }}" class="fullwidth text" placeholder="Enter value…">
                                                             </td>
                                                         </tr>
                                                     {% endfor %}
@@ -134,24 +138,12 @@
                             <code>{{ field.handle }}</code>
                         </td>
                         <td>
-                            <div class="select fullwidth">
-                                <select name="mappings[{{ idx }}][akeneoAttribute]" class="fullwidth akeneo-select" data-field-index="{{ idx }}">
-                                    <option value="">Don't import</option>
-                                    <option value="__static__" {% if isStatic %}selected{% endif %}>Static Value</option>
-                                    {% set currentGroup = null %}
-                                    {% for attribute in akeneoAttributes %}
-                                        {% if (attribute.type ?? '') != currentGroup %}
-                                            {% if currentGroup is not null %}</optgroup>{% endif %}
-                                            {% set currentGroup = attribute.type ?? '' %}
-                                            <optgroup label="{{ attribute.type ?? 'Other' }}">
-                                        {% endif %}
-                                        <option value="{{ attribute.code }}" {% if attribute.code == selectVal %}selected{% endif %}>
-                                            {{ attribute.label }}
-                                        </option>
-                                    {% endfor %}
-                                    {% if currentGroup is not null %}</optgroup>{% endif %}
-                                </select>
-                            </div>
+                            {{ forms.selectize({
+                                name: 'mappings[' ~ idx ~ '][akeneoAttribute]',
+                                id: 'akeneo-select-' ~ idx,
+                                value: selectVal,
+                                options: akeneoSelectOptions,
+                            }) }}
                         </td>
                         <td>
                             <input type="text" name="mappings[{{ idx }}][staticValue]" value="{{ staticVal }}" class="fullwidth text static-value-input" data-field-index="{{ idx }}" placeholder="Enter value…" {% if not isStatic %}disabled{% endif %}>
@@ -162,20 +154,20 @@
         </tbody>
     </table>
 
-    {# Build Akeneo attribute options HTML for JS #}
+    {# Build options HTML for JS dynamic table rows #}
     {% set akeneoOptionsHtml %}
 <option value="">Don't import</option>
 <option value="__static__">Static Value</option>
-{% set currentGroup = null %}
+{% set lastJsType = null %}
 {% for attribute in akeneoAttributes %}
-{% if (attribute.type ?? '') != currentGroup %}
-{% if currentGroup is not null %}</optgroup>{% endif %}
-{% set currentGroup = attribute.type ?? '' %}
-<optgroup label="{{ attribute.type ?? 'Other' }}">
+{% if (attribute.type ?? '') != lastJsType %}
+{% if lastJsType is not null %}</optgroup>{% endif %}
+{% set lastJsType = attribute.type ?? '' %}
+<optgroup label="{{ lastJsType ?: 'Other' }}">
 {% endif %}
 <option value="{{ attribute.code }}">{{ attribute.label }}</option>
 {% endfor %}
-{% if currentGroup is not null %}</optgroup>{% endif %}
+{% if lastJsType is not null %}</optgroup>{% endif %}
     {% endset %}
 
     {# Build column config per table field for JS #}
@@ -188,14 +180,23 @@
 
     <script type="text/javascript">
     (function() {
-        var akeneoOptions = {{ akeneoOptionsHtml|json_encode|raw }};
+        var akeneoOptionsHtml = {{ akeneoOptionsHtml|json_encode|raw }};
         var tableFieldColumns = {{ tableFieldColumns|json_encode|raw }};
+
+        function initSelectize(selectEl) {
+            var $sel = $(selectEl);
+            if ($sel[0].selectize) return;
+            $sel.selectize({
+                plugins: ['auto_position'],
+            });
+        }
 
         // Toggle static value input for regular fields
         document.addEventListener('change', function(e) {
-            if (!e.target.classList.contains('akeneo-select')) return;
-            var idx = e.target.getAttribute('data-field-index');
-            var staticInput = document.querySelector('.static-value-input[data-field-index="' + idx + '"]');
+            if (!e.target.matches('select[name*="[akeneoAttribute]"]')) return;
+            var tr = e.target.closest('tr');
+            if (!tr) return;
+            var staticInput = tr.querySelector('.static-value-input');
             if (!staticInput) return;
 
             if (e.target.value === '__static__') {
@@ -233,7 +234,7 @@
             for (var colId in columns) {
                 html += '<tr>';
                 html += '<td style="vertical-align: middle; white-space: nowrap;">' + columns[colId].heading + '</td>';
-                html += '<td><div class="select fullwidth"><select name="mappings[' + fieldIndex + '][tableRows][' + rowIndex + '][' + colId + '][akeneo]" class="fullwidth">' + akeneoOptions + '</select></div></td>';
+                html += '<td><select name="mappings[' + fieldIndex + '][tableRows][' + rowIndex + '][' + colId + '][akeneo]" style="display:none">' + akeneoOptionsHtml + '</select></td>';
                 html += '<td><input type="text" name="mappings[' + fieldIndex + '][tableRows][' + rowIndex + '][' + colId + '][static]" value="" class="fullwidth text" placeholder="Enter value…"></td>';
                 html += '</tr>';
             }
@@ -242,6 +243,11 @@
 
             div.innerHTML = html;
             body.appendChild(div);
+
+            // Init selectize on new selects
+            div.querySelectorAll('select').forEach(function(sel) {
+                initSelectize(sel);
+            });
         });
 
         // Remove table row
