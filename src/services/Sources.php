@@ -212,47 +212,15 @@ class Sources extends Component
 
         $seenHandles = ['title' => true, 'slug' => true];
 
-        if ($source->type === 'section') {
-            $section = Craft::$app->getEntries()->getSectionById($source->typeId);
+        $allCustomFields = Craft::$app->getFields()->getAllFields();
 
-            if ($section) {
-                foreach ($section->getEntryTypes() as $entryType) {
-                    $fieldLayout = $entryType->getFieldLayout();
-
-                    if ($fieldLayout) {
-                        foreach ($fieldLayout->getCustomFields() as $field) {
-                            if (!isset($seenHandles[$field->handle])) {
-                                $fields[] = [
-                                    'handle' => $field->handle,
-                                    'name' => $field->name,
-                                ];
-                                $seenHandles[$field->handle] = true;
-                            }
-                        }
-                    }
-                }
-            }
-        } elseif ($source->type === 'commerceProductType') {
-            $commercePlugin = Craft::$app->plugins->getPlugin('commerce');
-
-            if ($commercePlugin) {
-                $productType = $commercePlugin->getProductTypes()->getProductTypeById($source->typeId);
-
-                if ($productType) {
-                    $fieldLayout = $productType->getFieldLayout();
-
-                    if ($fieldLayout) {
-                        foreach ($fieldLayout->getCustomFields() as $field) {
-                            if (!isset($seenHandles[$field->handle])) {
-                                $fields[] = [
-                                    'handle' => $field->handle,
-                                    'name' => $field->name,
-                                ];
-                                $seenHandles[$field->handle] = true;
-                            }
-                        }
-                    }
-                }
+        foreach ($allCustomFields as $field) {
+            if (!isset($seenHandles[$field->handle])) {
+                $fields[] = [
+                    'handle' => $field->handle,
+                    'name' => $field->name,
+                ];
+                $seenHandles[$field->handle] = true;
             }
         }
 
