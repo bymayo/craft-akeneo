@@ -206,8 +206,8 @@ class Sources extends Component
     public function getCraftFieldsForSource(Source $source): array
     {
         $fields = [
-            ['handle' => 'title', 'name' => 'Title'],
-            ['handle' => 'slug', 'name' => 'Slug'],
+            ['handle' => 'title', 'name' => 'Title', 'type' => 'field'],
+            ['handle' => 'slug', 'name' => 'Slug', 'type' => 'field'],
         ];
 
         $seenHandles = ['title' => true, 'slug' => true];
@@ -216,10 +216,25 @@ class Sources extends Component
 
         foreach ($allCustomFields as $field) {
             if (!isset($seenHandles[$field->handle])) {
-                $fields[] = [
+                $fieldData = [
                     'handle' => $field->handle,
                     'name' => $field->name,
+                    'type' => 'field',
                 ];
+
+                if ($field instanceof \craft\fields\Table) {
+                    $fieldData['type'] = 'table';
+                    $fieldData['columns'] = [];
+
+                    foreach ($field->columns as $colId => $col) {
+                        $fieldData['columns'][$colId] = [
+                            'heading' => $col['heading'] ?? $colId,
+                            'handle' => $col['handle'] ?? $colId,
+                        ];
+                    }
+                }
+
+                $fields[] = $fieldData;
                 $seenHandles[$field->handle] = true;
             }
         }
@@ -229,7 +244,7 @@ class Sources extends Component
 
     public function getAkeneoAttributes(): array
     {
-        $cacheKey = 'akeneo_attributes';
+        $cacheKey = 'akeneo_attributes_v2';
         $cache = Craft::$app->getCache();
 
         $attributes = $cache->get($cacheKey);
@@ -243,13 +258,19 @@ class Sources extends Component
 
         foreach ($client->getAttributeApi()->all() as $attribute) {
             $label = $attribute['labels']['en_US'] ?? $attribute['labels']['en_GB'] ?? $attribute['code'];
+            $type = $attribute['type'] ?? 'other';
             $attributes[] = [
                 'code' => $attribute['code'],
                 'label' => $label . ' (' . $attribute['code'] . ')',
+                'type' => $type,
             ];
         }
 
         usort($attributes, function ($a, $b) {
+            $typeCompare = strcasecmp($a['type'], $b['type']);
+            if ($typeCompare !== 0) {
+                return $typeCompare;
+            }
             return strcasecmp($a['label'], $b['label']);
         });
 

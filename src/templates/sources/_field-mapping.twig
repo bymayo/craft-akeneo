@@ -33,6 +33,7 @@
         </div>
     {% endif %}
 
+    {# Build lookup of existing mappings by handle #}
     {% set mappingsByHandle = {} %}
     {% for mapping in mappings %}
         {% set mappingsByHandle = mappingsByHandle|merge({ (mapping.craftFieldHandle): mapping.akeneoAttribute }) %}
@@ -41,34 +42,215 @@
     <table class="data fullwidth">
         <thead>
             <tr>
-                <th>Craft Field</th>
+                <th>Field</th>
+                <th>Handle</th>
                 <th>Akeneo Attribute</th>
+                <th>Static Value</th>
             </tr>
         </thead>
         <tbody>
             {% for field in craftFields %}
+                {% set idx = loop.index0 %}
                 {% set currentValue = mappingsByHandle[field.handle] ?? '' %}
-                <tr>
-                    <td style="vertical-align: middle;">
-                        <strong>{{ field.name }}</strong>
-                        <span class="light"> — {{ field.handle }}</span>
-                        <input type="hidden" name="mappings[{{ loop.index0 }}][craftFieldHandle]" value="{{ field.handle }}">
-                    </td>
-                    <td>
-                        <div class="select fullwidth">
-                            <select name="mappings[{{ loop.index0 }}][akeneoAttribute]" class="fullwidth">
-                                <option value="">—</option>
-                                {% for attribute in akeneoAttributes %}
-                                    <option value="{{ attribute.code }}" {% if attribute.code == currentValue %}selected{% endif %}>
-                                        {{ attribute.label }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </td>
-                </tr>
+
+                {% if field.type == 'table' %}
+                    {# Decode existing table rows from JSON #}
+                    {% set tableRows = currentValue ? currentValue|json_decode : [] %}
+
+                    <tr>
+                        <td style="vertical-align: top;">
+                            {{ field.name }}
+                            <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
+                        </td>
+                        <td style="vertical-align: top;">
+                            <code>{{ field.handle }}</code>
+                        </td>
+                        <td colspan="2">
+                            <div class="table-field-mapping" data-field-index="{{ idx }}">
+                                <div class="table-rows-body">
+                                    {% for row in tableRows %}
+                                        <div class="table-mapping-row" style="border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;">
+                                            <a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 10px; right: 10px;"></a>
+                                            <table class="data fullwidth">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Column</th>
+                                                        <th>Akeneo Attribute</th>
+                                                        <th>Static Value</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for colId, col in field.columns %}
+                                                        <tr>
+                                                            <td style="vertical-align: middle; white-space: nowrap;">
+                                                                {{ col.heading }}
+                                                            </td>
+                                                            <td>
+                                                                <div class="select fullwidth">
+                                                                    <select name="mappings[{{ idx }}][tableRows][{{ loop.parent.loop.index0 }}][{{ colId }}][akeneo]" class="fullwidth">
+                                                                        <option value="">Don't import</option>
+                                                                        <option value="__static__" {% if (row[colId].akeneo ?? '') == '__static__' or ((row[colId].static ?? '') and (row[colId].akeneo ?? '') == '') %}selected{% endif %}>Static Value</option>
+                                                                        {% set currentGroup = null %}
+                                                                        {% for attribute in akeneoAttributes %}
+                                                                            {% if (attribute.type ?? '') != currentGroup %}
+                                                                                {% if currentGroup is not null %}</optgroup>{% endif %}
+                                                                                {% set currentGroup = attribute.type ?? '' %}
+                                                                                <optgroup label="{{ attribute.type ?? 'Other' }}">
+                                                                            {% endif %}
+                                                                            <option value="{{ attribute.code }}" {% if attribute.code == (row[colId].akeneo ?? '') %}selected{% endif %}>
+                                                                                {{ attribute.label }}
+                                                                            </option>
+                                                                        {% endfor %}
+                                                                        {% if currentGroup is not null %}</optgroup>{% endif %}
+                                                                    </select>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <input type="text" name="mappings[{{ idx }}][tableRows][{{ loop.parent.loop.index0 }}][{{ colId }}][static]" value="{{ row[colId].static ?? '' }}" class="fullwidth text" placeholder="Enter value…">
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                <button type="button" class="btn small add icon add-table-row-btn">Add row</button>
+                            </div>
+                        </td>
+                    </tr>
+                {% else %}
+                    {# Check if current value is a static value #}
+                    {% set isStatic = currentValue starts with 'static:' %}
+                    {% set staticVal = isStatic ? currentValue|slice(7) : '' %}
+                    {% set selectVal = isStatic ? '__static__' : currentValue %}
+
+                    <tr>
+                        <td style="vertical-align: middle;">
+                            {{ field.name }}
+                            <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <code>{{ field.handle }}</code>
+                        </td>
+                        <td>
+                            <div class="select fullwidth">
+                                <select name="mappings[{{ idx }}][akeneoAttribute]" class="fullwidth akeneo-select" data-field-index="{{ idx }}">
+                                    <option value="">Don't import</option>
+                                    <option value="__static__" {% if isStatic %}selected{% endif %}>Static Value</option>
+                                    {% set currentGroup = null %}
+                                    {% for attribute in akeneoAttributes %}
+                                        {% if (attribute.type ?? '') != currentGroup %}
+                                            {% if currentGroup is not null %}</optgroup>{% endif %}
+                                            {% set currentGroup = attribute.type ?? '' %}
+                                            <optgroup label="{{ attribute.type ?? 'Other' }}">
+                                        {% endif %}
+                                        <option value="{{ attribute.code }}" {% if attribute.code == selectVal %}selected{% endif %}>
+                                            {{ attribute.label }}
+                                        </option>
+                                    {% endfor %}
+                                    {% if currentGroup is not null %}</optgroup>{% endif %}
+                                </select>
+                            </div>
+                        </td>
+                        <td>
+                            <input type="text" name="mappings[{{ idx }}][staticValue]" value="{{ staticVal }}" class="fullwidth text static-value-input" data-field-index="{{ idx }}" placeholder="Enter value…" {% if not isStatic %}disabled{% endif %}>
+                        </td>
+                    </tr>
+                {% endif %}
             {% endfor %}
         </tbody>
     </table>
+
+    {# Build Akeneo attribute options HTML for JS #}
+    {% set akeneoOptionsHtml %}
+<option value="">Don't import</option>
+<option value="__static__">Static Value</option>
+{% set currentGroup = null %}
+{% for attribute in akeneoAttributes %}
+{% if (attribute.type ?? '') != currentGroup %}
+{% if currentGroup is not null %}</optgroup>{% endif %}
+{% set currentGroup = attribute.type ?? '' %}
+<optgroup label="{{ attribute.type ?? 'Other' }}">
+{% endif %}
+<option value="{{ attribute.code }}">{{ attribute.label }}</option>
+{% endfor %}
+{% if currentGroup is not null %}</optgroup>{% endif %}
+    {% endset %}
+
+    {# Build column config per table field for JS #}
+    {% set tableFieldColumns = {} %}
+    {% for field in craftFields %}
+        {% if field.type == 'table' %}
+            {% set tableFieldColumns = tableFieldColumns|merge({ (field.handle): field.columns }) %}
+        {% endif %}
+    {% endfor %}
+
+    <script type="text/javascript">
+    (function() {
+        var akeneoOptions = {{ akeneoOptionsHtml|json_encode|raw }};
+        var tableFieldColumns = {{ tableFieldColumns|json_encode|raw }};
+
+        // Toggle static value input for regular fields
+        document.addEventListener('change', function(e) {
+            if (!e.target.classList.contains('akeneo-select')) return;
+            var idx = e.target.getAttribute('data-field-index');
+            var staticInput = document.querySelector('.static-value-input[data-field-index="' + idx + '"]');
+            if (!staticInput) return;
+
+            if (e.target.value === '__static__') {
+                staticInput.disabled = false;
+                staticInput.focus();
+            } else {
+                staticInput.disabled = true;
+                staticInput.value = '';
+            }
+        });
+
+        // Add table row
+        document.addEventListener('click', function(e) {
+            var addBtn = e.target.closest('.add-table-row-btn');
+            if (!addBtn) return;
+
+            var wrapper = addBtn.closest('.table-field-mapping');
+            var fieldIndex = wrapper.getAttribute('data-field-index');
+            var body = wrapper.querySelector('.table-rows-body');
+            var rowIndex = body.querySelectorAll('.table-mapping-row').length;
+
+            var hiddenInput = wrapper.closest('tr').querySelector('input[type="hidden"]');
+            var fieldHandle = hiddenInput.value;
+            var columns = tableFieldColumns[fieldHandle];
+
+            if (!columns) return;
+
+            var div = document.createElement('div');
+            div.className = 'table-mapping-row';
+            div.style.cssText = 'border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;';
+
+            var html = '<a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 10px; right: 10px;"></a>';
+            html += '<table class="data fullwidth"><thead><tr><th>Column</th><th>Akeneo Attribute</th><th>Static Value</th></tr></thead><tbody>';
+
+            for (var colId in columns) {
+                html += '<tr>';
+                html += '<td style="vertical-align: middle; white-space: nowrap;">' + columns[colId].heading + '</td>';
+                html += '<td><div class="select fullwidth"><select name="mappings[' + fieldIndex + '][tableRows][' + rowIndex + '][' + colId + '][akeneo]" class="fullwidth">' + akeneoOptions + '</select></div></td>';
+                html += '<td><input type="text" name="mappings[' + fieldIndex + '][tableRows][' + rowIndex + '][' + colId + '][static]" value="" class="fullwidth text" placeholder="Enter value…"></td>';
+                html += '</tr>';
+            }
+
+            html += '</tbody></table>';
+
+            div.innerHTML = html;
+            body.appendChild(div);
+        });
+
+        // Remove table row
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('table-row-delete')) {
+                e.target.closest('.table-mapping-row').remove();
+            }
+        });
+    })();
+    </script>
 
 {% endblock %}

@@ -151,10 +151,59 @@ class SourcesController extends Controller
         $mappings = [];
 
         foreach ($rawMappings as $mapping) {
-            if (!empty($mapping['craftFieldHandle']) && !empty($mapping['akeneoAttribute'])) {
+            $handle = $mapping['craftFieldHandle'] ?? '';
+
+            if (empty($handle)) {
+                continue;
+            }
+
+            // Table field: encode rows as JSON
+            if (!empty($mapping['tableRows'])) {
+                $rows = [];
+
+                foreach ($mapping['tableRows'] as $row) {
+                    $hasData = false;
+                    $rowData = [];
+
+                    foreach ($row as $colId => $colData) {
+                        $rowData[$colId] = [
+                            'static' => $colData['static'] ?? '',
+                            'akeneo' => $colData['akeneo'] ?? '',
+                        ];
+
+                        if (!empty($colData['static']) || !empty($colData['akeneo'])) {
+                            $hasData = true;
+                        }
+                    }
+
+                    if ($hasData) {
+                        $rows[] = $rowData;
+                    }
+                }
+
+                if (!empty($rows)) {
+                    $mappings[] = [
+                        'craftFieldHandle' => $handle,
+                        'akeneoAttribute' => json_encode($rows),
+                    ];
+                }
+
+                continue;
+            }
+
+            // Regular field
+            $akeneoAttribute = $mapping['akeneoAttribute'] ?? '';
+            $staticValue = $mapping['staticValue'] ?? '';
+
+            if ($akeneoAttribute === '__static__' && $staticValue !== '') {
                 $mappings[] = [
-                    'craftFieldHandle' => $mapping['craftFieldHandle'],
-                    'akeneoAttribute' => $mapping['akeneoAttribute'],
+                    'craftFieldHandle' => $handle,
+                    'akeneoAttribute' => 'static:' . $staticValue,
+                ];
+            } elseif (!empty($akeneoAttribute) && $akeneoAttribute !== '__static__') {
+                $mappings[] = [
+                    'craftFieldHandle' => $handle,
+                    'akeneoAttribute' => $akeneoAttribute,
                 ];
             }
         }
