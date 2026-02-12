@@ -1,13 +1,62 @@
-<form method="post">
-    {{ csrfInput() }}
-    {{ actionInput('akeneo/sync/get-products') }}
-    <button type="submit" class="btn submit">{{ "Sync Products (Images & Data)"|t }}</button>
-</form>
+{% if not sources|length %}
+    <p class="light">{{ 'No sources configured.'|t('akeneo') }} <a href="{{ url('akeneo/sources/new') }}">{{ 'Create one'|t('akeneo') }}</a></p>
+{% else %}
+    {% for source in sources %}
+        <div class="akeneo-widget-source" style="{% if not loop.first %}margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--gray-200);{% endif %}">
+            <strong style="display: block; margin-bottom: 8px;">{{ source.name }}</strong>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="all">{{ 'Sync All'|t('akeneo') }}</button>
+                <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="data">{{ 'Data Only'|t('akeneo') }}</button>
+                <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="images">{{ 'Images Only'|t('akeneo') }}</button>
+            </div>
+            {% if source.lastImportedAt %}
+                <span class="light" style="font-size: 11px; display: block; margin-top: 8px;">{{ 'Last Synced:'|t('akeneo') }} {{ source.lastImportedAt|date('d/m/Y H:i') }}</span>
+            {% endif %}
+        </div>
+    {% endfor %}
+{% endif %}
 
-<br>
+<script type="text/javascript">
+(function() {
+    document.querySelectorAll('.akeneo-sync-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var sourceId = this.getAttribute('data-source-id');
+            var type = this.getAttribute('data-type');
+            var button = this;
 
-<form method="post">
-    {{ csrfInput() }}
-    {{ actionInput('akeneo/sync/get-products-data-only') }}
-    <button type="submit" class="btn submit">{{ "Sync Products (Data only)"|t }}</button>
-</form>
+            button.classList.add('loading');
+            button.disabled = true;
+
+            var body = new FormData();
+            body.append(Craft.csrfTokenName, Craft.csrfTokenValue);
+            body.append('sourceId', sourceId);
+            body.append('type', type);
+
+            fetch(Craft.actionUrl + '/akeneo/sync/run', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: body
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                button.classList.remove('loading');
+                button.disabled = false;
+
+                if (data && data.success) {
+                    Craft.cp.displayNotice('Sync job queued.');
+                } else {
+                    Craft.cp.displayError('Sync failed.');
+                }
+            })
+            .catch(function() {
+                button.classList.remove('loading');
+                button.disabled = false;
+                Craft.cp.displayError('Sync failed.');
+            });
+        });
+    });
+})();
+</script>

@@ -14,6 +14,13 @@ class SourcesController extends Controller
 {
     protected array|int|bool $allowAnonymous = self::ALLOW_ANONYMOUS_NEVER;
 
+    public function actionSettings(): Response
+    {
+        return $this->renderTemplate('akeneo/settings/_edit', [
+            'settings' => Plugin::getInstance()->getSettings(),
+        ]);
+    }
+
     public function actionIndex(): Response
     {
         $sources = Plugin::getInstance()->sources->getAllSources();
@@ -47,51 +54,11 @@ class SourcesController extends Controller
             if (!$source) {
                 throw new NotFoundHttpException('Source not found');
             }
-
-            $title = $source->name;
         } else {
             $source = new Source();
-            $title = 'Create a new source';
         }
 
-        $typeOptions = Plugin::getInstance()->sources->getTypeOptions();
-
-        $identifierOptions = [];
-        if ($source->id && $source->type && $source->typeId) {
-            $craftFields = Plugin::getInstance()->sources->getCraftFieldsForSource($source);
-            foreach ($craftFields as $field) {
-                if ($field['type'] === 'field' && $field['supported']) {
-                    $identifierOptions[] = [
-                        'label' => $field['name'],
-                        'value' => $field['handle'],
-                    ];
-                }
-            }
-        }
-
-        $localeOptions = [];
-        $localeError = null;
-
-        try {
-            $akeneoLocales = Plugin::getInstance()->sources->getAkeneoLocales();
-            foreach ($akeneoLocales as $locale) {
-                $localeOptions[] = [
-                    'label' => $locale['label'],
-                    'value' => $locale['code'],
-                ];
-            }
-        } catch (\Throwable $e) {
-            $localeError = $e->getMessage();
-        }
-
-        return $this->renderTemplate('akeneo/sources/_edit', [
-            'source' => $source,
-            'title' => $title,
-            'typeOptions' => $typeOptions,
-            'identifierOptions' => $identifierOptions,
-            'localeOptions' => $localeOptions,
-            'localeError' => $localeError,
-        ]);
+        return $this->renderTemplate('akeneo/sources/_edit', $this->_editTemplateParams($source));
     }
 
     public function actionSave(): ?Response
@@ -126,6 +93,9 @@ class SourcesController extends Controller
         $source->entryIdentifier = $request->getBodyParam('entryIdentifier') ?: null;
         $source->akeneoLocale = $request->getBodyParam('akeneoLocale') ?: null;
 
+        $siteIdParam = $request->getBodyParam('siteId');
+        $source->siteId = $siteIdParam ? (int) $siteIdParam : null;
+
         // Build filters JSON from repeatable rows
         $rawFilters = $request->getBodyParam('filters', []);
         $filters = [];
@@ -148,9 +118,9 @@ class SourcesController extends Controller
         if (!Plugin::getInstance()->sources->saveSource($source)) {
             Craft::$app->getSession()->setError('Couldn\'t save source.');
 
-            Craft::$app->getUrlManager()->setRouteParams([
-                'source' => $source,
-            ]);
+            Craft::$app->getUrlManager()->setRouteParams(
+                $this->_editTemplateParams($source)
+            );
 
             return null;
         }
@@ -298,6 +268,12 @@ class SourcesController extends Controller
                                 if (!empty($tableRows)) {
                                     $rowData[$fieldHandle] = $tableRows;
                                 }
+                            } elseif (!empty($fieldData['akeneoMulti'])) {
+                                // Multi-asset field inside matrix
+                                $assetCodes = array_filter($fieldData['akeneoMulti']);
+                                if (!empty($assetCodes)) {
+                                    $rowData[$fieldHandle] = array_values($assetCodes);
+                                }
                             } else {
                                 $akeneo = $fieldData['akeneo'] ?? '';
                                 $static = $fieldData['static'] ?? '';
@@ -327,6 +303,18 @@ class SourcesController extends Controller
                     ];
                 }
 
+                continue;
+            }
+
+            // Multi-asset field
+            if (!empty($mapping['akeneoAssetMulti'])) {
+                $assetCodes = array_filter($mapping['akeneoAssetMulti']);
+                if (!empty($assetCodes)) {
+                    $mappings[] = [
+                        'craftFieldHandle' => $handle,
+                        'akeneoAttribute' => json_encode(array_values($assetCodes)),
+                    ];
+                }
                 continue;
             }
 
@@ -379,5 +367,57 @@ class SourcesController extends Controller
         Plugin::getInstance()->sources->deleteSourceById($id);
 
         return $this->asJson(['success' => true]);
+    }
+
+    private function _editTemplateParams(Source $source): array
+    {
+        $params = [
+            'source' => $source,
+            'title' => $source->id ? $source->name : 'Create a new source',
+            'typeOptions' => Plugin::getInstance()->sources->getTypeOptions(),
+        ];
+
+        if ($source->id && $source->type && $source->typeId) {
+            $craftFields = Plugin::getInstance()->sources->getCraftFieldsForSource($source);
+            $identifierOptions = [];
+
+            foreach ($craftFields as $field) {
+                if (in_array($field['type'], ['field']) && $field['supported']) {
+                    $identifierOptions[] = [
+                        'label' => $field['name'],
+                        'value' => $field['handle'],
+                    ];
+                }
+            }
+
+            $params['identifierOptions'] = $identifierOptions;
+        }
+
+        $siteOptions = [];
+        foreach (Craft::$app->getSites()->getAllSites() as $site) {
+            $siteOptions[] = [
+                'label' => $site->getName(),
+                'value' => $site->id,
+            ];
+        }
+        $params['siteOptions'] = $siteOptions;
+
+        try {
+            $locales = Plugin::getInstance()->sources->getAkeneoLocales();
+            $localeOptions = [];
+
+            foreach ($locales as $locale) {
+                $localeOptions[] = [
+                    'label' => $locale['label'],
+                    'value' => $locale['code'],
+                ];
+            }
+
+            $params['localeOptions'] = $localeOptions;
+        } catch (\Throwable $e) {
+            $params['localeError'] = $e->getMessage();
+        }
+
+        return $params;
     }
 }

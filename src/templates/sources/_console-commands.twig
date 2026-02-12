@@ -1,0 +1,49 @@
+{% extends '_layouts/cp' %}
+
+{% set title = source.name %}
+{% set selectedSubnavItem = 'sources' %}
+
+{% set crumbs = [
+    { label: 'Akeneo', url: url('akeneo') },
+    { label: 'Sources', url: url('akeneo/sources') },
+] %}
+
+{% set tabs = {
+    settings: { label: 'Settings', url: url('akeneo/sources/' ~ source.id) },
+    fieldMapping: { label: 'Field Mapping', url: url('akeneo/sources/' ~ source.id ~ '/field-mapping') },
+    consoleCommands: { label: 'Console Commands', url: url('akeneo/sources/' ~ source.id ~ '/console-commands') },
+} %}
+{% set selectedTab = 'consoleCommands' %}
+
+{% block content %}
+
+    <div class="field">
+        <div class="heading">
+            <div class="instructions"><p>{{ 'Use these commands to trigger syncs from the terminal or cron jobs.'|t('akeneo') }}</p></div>
+        </div>
+        <div class="input">
+            <div style="margin-bottom: 8px;">
+                <label class="light" style="display: block; margin-bottom: 4px;">Sync All (Data + Images)</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/all --source={{ source.id }}">
+                    <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
+                </div>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <label class="light" style="display: block; margin-bottom: 4px;">Sync Data Only</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/data-only --source={{ source.id }}">
+                    <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
+                </div>
+            </div>
+            <div>
+                <label class="light" style="display: block; margin-bottom: 4px;">Sync Images Only</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/images-only --source={{ source.id }}">
+                    <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+{% endblock %}

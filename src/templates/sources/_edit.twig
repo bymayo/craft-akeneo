@@ -16,6 +16,7 @@
     {% set tabs = {
         settings: { label: 'Settings', url: url('akeneo/sources/' ~ source.id) },
         fieldMapping: { label: 'Field Mapping', url: url('akeneo/sources/' ~ source.id ~ '/field-mapping') },
+        consoleCommands: { label: 'Console Commands', url: url('akeneo/sources/' ~ source.id ~ '/console-commands') },
     } %}
     {% set selectedTab = 'settings' %}
 {% endif %}
@@ -76,6 +77,7 @@
             name: 'entryIdentifier',
             value: source.entryIdentifier ?? '',
             options: [{ label: 'Select…', value: '' }]|merge(identifierOptions),
+            errors: source.getErrors('entryIdentifier'),
             required: true,
         }) }}
     {% endif %}
@@ -88,6 +90,7 @@
             name: 'akeneoLocale',
             value: source.akeneoLocale ?? '',
             options: [{ label: 'Select…', value: '' }]|merge(localeOptions),
+            errors: source.getErrors('akeneoLocale'),
             required: true,
         }) }}
     {% elseif localeError is defined and localeError %}
@@ -97,6 +100,18 @@
             </div>
             <p class="error">{{ 'Could not load Akeneo locales: '|t('akeneo') ~ localeError }}</p>
         </div>
+    {% endif %}
+
+    {% if siteOptions is defined and siteOptions|length > 1 %}
+        {{ forms.selectField({
+            label: 'Site'|t('akeneo'),
+            instructions: 'The Craft site to import entries into. If not set, entries will be saved to the primary site.'|t('akeneo'),
+            id: 'siteId',
+            name: 'siteId',
+            value: source.siteId ?? '',
+            options: [{ label: 'Primary Site', value: '' }]|merge(siteOptions),
+            errors: source.getErrors('siteId'),
+        }) }}
     {% endif %}
 
     <hr>
@@ -162,40 +177,6 @@
         });
     })();
     {% endjs %}
-
-    {% if source.id %}
-        <hr>
-
-        <div class="field">
-            <div class="heading">
-                <label>Console Commands</label>
-                <div class="instructions"><p>Use these commands to trigger syncs from the terminal or cron jobs.</p></div>
-            </div>
-            <div class="input">
-                <div style="margin-bottom: 8px;">
-                    <label class="light" style="display: block; margin-bottom: 4px;">Sync All (Data + Images)</label>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/all --source={{ source.id }}">
-                        <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
-                    </div>
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <label class="light" style="display: block; margin-bottom: 4px;">Sync Data Only</label>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/data-only --source={{ source.id }}">
-                        <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
-                    </div>
-                </div>
-                <div>
-                    <label class="light" style="display: block; margin-bottom: 4px;">Sync Images Only</label>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/images-only --source={{ source.id }}">
-                        <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    {% endif %}
 
     <hr>
 

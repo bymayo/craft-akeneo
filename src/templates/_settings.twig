@@ -1,104 +1,174 @@
 {% import '_includes/forms.twig' as forms %}
 
-{{ forms.autosuggestField({
-    first: true,
-    label: 'API URL',
-    instructions: 'The base URL of your Akeneo PIM instance.',
-    id: 'apiUrl',
-    name: 'apiUrl',
-    value: settings.apiUrl,
-    suggestEnvVars: true,
-    required: true,
-}) }}
+<div id="akeneo-settings-tabs" class="pane-tabs">
+    <nav>
+        <ul>
+            <li><a id="tab-api-btn" class="tab sel" href="#tab-api" data-tab="tab-api">API</a></li>
+            <li><a id="tab-sync-btn" class="tab" href="#tab-sync" data-tab="tab-sync">Sync</a></li>
+        </ul>
+    </nav>
+</div>
 
-{{ forms.autosuggestField({
-    label: 'Client ID',
-    instructions: 'The Akeneo API client ID.',
-    id: 'clientId',
-    name: 'clientId',
-    value: settings.clientId,
-    suggestEnvVars: true,
-    required: true,
-}) }}
+<div id="tab-api">
+    {{ forms.autosuggestField({
+        first: true,
+        label: 'API URL',
+        instructions: 'The base URL of your Akeneo PIM instance.',
+        id: 'apiUrl',
+        name: 'apiUrl',
+        value: settings.apiUrl,
+        suggestEnvVars: true,
+        required: true,
+        errors: settings.getErrors('apiUrl'),
+    }) }}
 
-{{ forms.autosuggestField({
-    label: 'Secret Key',
-    instructions: 'The Akeneo API secret key.',
-    id: 'secretKey',
-    name: 'secretKey',
-    value: settings.secretKey,
-    suggestEnvVars: true,
-    required: true,
-}) }}
+    {{ forms.autosuggestField({
+        label: 'Client ID',
+        instructions: 'The Akeneo API client ID.',
+        id: 'clientId',
+        name: 'clientId',
+        value: settings.clientId,
+        suggestEnvVars: true,
+        required: true,
+        errors: settings.getErrors('clientId'),
+    }) }}
 
-{{ forms.autosuggestField({
-    label: 'Username',
-    instructions: 'The Akeneo API username.',
-    id: 'username',
-    name: 'username',
-    value: settings.username,
-    suggestEnvVars: true,
-    required: true,
-}) }}
+    {{ forms.autosuggestField({
+        label: 'Secret Key',
+        instructions: 'The Akeneo API secret key.',
+        id: 'secretKey',
+        name: 'secretKey',
+        value: settings.secretKey,
+        suggestEnvVars: true,
+        required: true,
+        errors: settings.getErrors('secretKey'),
+    }) }}
 
-{{ forms.autosuggestField({
-    label: 'Password',
-    instructions: 'The Akeneo API password.',
-    id: 'password',
-    name: 'password',
-    value: settings.password,
-    suggestEnvVars: true,
-    required: true,
-}) }}
+    {{ forms.autosuggestField({
+        label: 'Username',
+        instructions: 'The Akeneo API username.',
+        id: 'username',
+        name: 'username',
+        value: settings.username,
+        suggestEnvVars: true,
+        required: true,
+        errors: settings.getErrors('username'),
+    }) }}
 
-{{ forms.textField({
-    label: 'Attribute Cache Duration',
-    instructions: 'How long (in seconds) to cache Akeneo attributes. Set to 0 to disable caching.',
-    id: 'attributeCacheDuration',
-    name: 'attributeCacheDuration',
-    value: settings.attributeCacheDuration,
-    type: 'number',
-    min: 0,
-    size: 10,
-}) }}
+    {{ forms.autosuggestField({
+        label: 'Password',
+        instructions: 'The Akeneo API password.',
+        id: 'password',
+        name: 'password',
+        value: settings.password,
+        suggestEnvVars: true,
+        required: true,
+        errors: settings.getErrors('password'),
+    }) }}
 
-{{ forms.textField({
-    label: 'Sync Page Size',
-    instructions: 'Number of products to fetch per API request during sync.',
-    id: 'syncPageSize',
-    name: 'syncPageSize',
-    value: settings.syncPageSize,
-    type: 'number',
-    min: 1,
-    max: 100,
-    size: 10,
-}) }}
+    {{ forms.textField({
+        label: 'Attribute Cache Duration',
+        instructions: 'How long (in seconds) to cache Akeneo attributes. Set to 0 to disable caching.',
+        id: 'attributeCacheDuration',
+        name: 'attributeCacheDuration',
+        value: settings.attributeCacheDuration,
+        type: 'number',
+        min: 0,
+        size: 10,
+        errors: settings.getErrors('attributeCacheDuration'),
+    }) }}
 
-{{ forms.textField({
-    label: 'Sync Max Pages',
-    instructions: 'Maximum number of pages to fetch during a sync. Controls how many products are synced in total (page size x max pages).',
-    id: 'syncMaxPages',
-    name: 'syncMaxPages',
-    value: settings.syncMaxPages,
-    type: 'number',
-    min: 1,
-    size: 10,
-}) }}
+    <hr>
 
-<hr>
-
-<div class="field">
-    <div class="heading">
-        <label>Connection Status</label>
-        <div class="instructions"><p>Test the connection to your Akeneo PIM instance using the saved credentials.</p></div>
-    </div>
-    <div class="input">
-        <button type="button" class="btn" onclick="window._testAkeneoConnection(this)">Test Connection</button>
-        <div class="akeneo-connection-result" style="display: none; margin-top: 10px; padding: 10px 14px; border-radius: 4px;"></div>
+    <div class="field">
+        <div class="heading">
+            <label>Connection Status</label>
+            <div class="instructions"><p>Test the connection to your Akeneo PIM instance using the saved credentials.</p></div>
+        </div>
+        <div class="input">
+            <button type="button" class="btn" onclick="window._testAkeneoConnection(this)">Test Connection</button>
+            <div class="akeneo-connection-result" style="display: none; margin-top: 10px; padding: 10px 14px; border-radius: 4px;"></div>
+        </div>
     </div>
 </div>
 
+<div id="tab-sync" class="hidden">
+    {{ forms.textField({
+        first: true,
+        label: 'Sync Page Size',
+        instructions: 'Number of products to fetch per API request during sync.',
+        id: 'syncPageSize',
+        name: 'syncPageSize',
+        value: settings.syncPageSize,
+        type: 'number',
+        min: 1,
+        max: 100,
+        size: 10,
+        errors: settings.getErrors('syncPageSize'),
+    }) }}
+
+    {{ forms.textField({
+        label: 'Sync Max Pages',
+        instructions: 'Maximum number of pages to fetch during a sync. Controls how many products are synced in total (page size x max pages).',
+        id: 'syncMaxPages',
+        name: 'syncMaxPages',
+        value: settings.syncMaxPages,
+        type: 'number',
+        min: 1,
+        size: 10,
+        errors: settings.getErrors('syncMaxPages'),
+    }) }}
+
+    {% set volumeOptions = [] %}
+    {% for volume in craft.app.volumes.getAllVolumes() %}
+        {% set volumeOptions = volumeOptions|merge([{ label: volume.name, value: volume.handle }]) %}
+    {% endfor %}
+
+    {{ forms.selectField({
+        label: 'Asset Volume',
+        instructions: 'The Craft asset volume to store Akeneo images in.',
+        id: 'assetVolumeHandle',
+        name: 'assetVolumeHandle',
+        value: settings.assetVolumeHandle,
+        options: volumeOptions,
+        required: true,
+        errors: settings.getErrors('assetVolumeHandle'),
+    }) }}
+
+    {{ forms.textField({
+        label: 'Asset Folder Name',
+        instructions: 'The folder name within the volume where Akeneo images are stored.',
+        id: 'assetFolderName',
+        name: 'assetFolderName',
+        value: settings.assetFolderName,
+        required: true,
+        errors: settings.getErrors('assetFolderName'),
+    }) }}
+</div>
+
 <script type="text/javascript">
+(function() {
+    var tabs = document.querySelectorAll('#akeneo-settings-tabs a.tab');
+    var panels = {
+        'tab-api': document.getElementById('tab-api'),
+        'tab-sync': document.getElementById('tab-sync')
+    };
+
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            var target = this.getAttribute('data-tab');
+
+            tabs.forEach(function(t) { t.classList.remove('sel'); });
+            this.classList.add('sel');
+
+            Object.keys(panels).forEach(function(key) {
+                panels[key].classList.toggle('hidden', key !== target);
+            });
+        });
+    });
+})();
+
 window._testAkeneoConnection = function(btn) {
     var result = btn.nextElementSibling;
     btn.classList.add('loading');

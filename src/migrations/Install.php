@@ -16,6 +16,7 @@ class Install extends Migration
             'orphanedEntryAction' => $this->string()->notNull()->defaultValue('doNothing'),
             'entryIdentifier' => $this->string()->null(),
             'akeneoLocale' => $this->string()->null(),
+            'siteId' => $this->integer()->null(),
             'filters' => $this->text()->null(),
             'lastImportedAt' => $this->dateTime()->null(),
             'dateCreated' => $this->dateTime()->notNull(),

@@ -13,6 +13,7 @@ class Source extends Model
     public string $orphanedEntryAction = 'doNothing';
     public ?string $entryIdentifier = null;
     public ?string $akeneoLocale = null;
+    public ?int $siteId = null;
     public ?string $filters = null;
     public ?string $lastImportedAt = null;
     public ?string $uid = null;

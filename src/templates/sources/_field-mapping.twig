@@ -226,6 +226,10 @@
                                                             {% elseif nestedField.type == 'asset' %}
                                                                 {# Asset field inside Matrix entry row #}
                                                                 {% set nestedValue = row[nestedField.handle] ?? '' %}
+                                                                {% set isNestedMultiAsset = nestedField.maxRelations is not defined or nestedField.maxRelations is null or nestedField.maxRelations != 1 %}
+                                                                {% if isNestedMultiAsset %}
+                                                                    {% set nestedAssetValues = nestedValue is iterable ? nestedValue : (nestedValue ? [nestedValue] : []) %}
+                                                                {% endif %}
                                                                 <tr>
                                                                     <td style="vertical-align: middle; white-space: nowrap;">
                                                                         {{ nestedField.name }}
@@ -233,11 +237,21 @@
                                                                         <code style="font-size: 10px;">{{ nestedField.handle }}</code>
                                                                     </td>
                                                                     <td>
-                                                                        {{ forms.selectize({
-                                                                            name: 'mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][akeneo]',
-                                                                            value: nestedValue ?: '__none__',
-                                                                            options: akeneoAssetSelectOptions,
-                                                                        }) }}
+                                                                        {% if isNestedMultiAsset %}
+                                                                            <select name="mappings[{{ idx }}][matrix][{{ entryType.handle }}][{{ matrixRowIdx }}][{{ nestedField.handle }}][akeneoMulti][]" multiple data-max-items="{{ nestedField.maxRelations ?? '' }}" style="display:none">
+                                                                                {% for opt in akeneoAssetSelectOptions %}
+                                                                                    {% if opt.value is defined and opt.value != '__none__' %}
+                                                                                        <option value="{{ opt.value }}" {{ opt.value in nestedAssetValues ? 'selected' }}>{{ opt.label }}</option>
+                                                                                    {% endif %}
+                                                                                {% endfor %}
+                                                                            </select>
+                                                                        {% else %}
+                                                                            {{ forms.selectize({
+                                                                                name: 'mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][akeneo]',
+                                                                                value: nestedValue ?: '__none__',
+                                                                                options: akeneoAssetSelectOptions,
+                                                                            }) }}
+                                                                        {% endif %}
                                                                     </td>
                                                                     <td></td>
                                                                 </tr>
@@ -290,6 +304,13 @@
                         </td>
                     </tr>
                 {% elseif field.type == 'asset' %}
+                    {% set isMultiAsset = field.maxRelations is not defined or field.maxRelations is null or field.maxRelations != 1 %}
+                    {% if isMultiAsset %}
+                        {% set assetValues = currentValue ? currentValue|json_decode : [] %}
+                        {% if assetValues is not iterable %}
+                            {% set assetValues = currentValue ? [currentValue] : [] %}
+                        {% endif %}
+                    {% endif %}
                     <tr>
                         <td style="vertical-align: middle;">
                             {{ field.name }}<br>
@@ -300,12 +321,22 @@
                             <span class="light">{{ field.fieldType }}</span>
                         </td>
                         <td>
-                            {{ forms.selectize({
-                                name: 'mappings[' ~ idx ~ '][akeneoAttribute]',
-                                id: 'akeneo-select-' ~ idx,
-                                value: currentValue ?: '__none__',
-                                options: akeneoAssetSelectOptions,
-                            }) }}
+                            {% if isMultiAsset %}
+                                <select name="mappings[{{ idx }}][akeneoAssetMulti][]" id="akeneo-select-{{ idx }}" multiple data-max-items="{{ field.maxRelations ?? '' }}" style="display:none">
+                                    {% for opt in akeneoAssetSelectOptions %}
+                                        {% if opt.value is defined and opt.value != '__none__' %}
+                                            <option value="{{ opt.value }}" {{ opt.value in assetValues ? 'selected' }}>{{ opt.label }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            {% else %}
+                                {{ forms.selectize({
+                                    name: 'mappings[' ~ idx ~ '][akeneoAttribute]',
+                                    id: 'akeneo-select-' ~ idx,
+                                    value: currentValue ?: '__none__',
+                                    options: akeneoAssetSelectOptions,
+                                }) }}
+                            {% endif %}
                         </td>
                         <td></td>
                     </tr>
@@ -396,7 +427,7 @@
                 {% set fieldsConfig = [] %}
                 {% set entryTypeTableFields = {} %}
                 {% for nestedField in entryType.fields %}
-                    {% set fieldConfig = { handle: nestedField.handle, name: nestedField.name, type: nestedField.type, supported: nestedField.supported ?? true } %}
+                    {% set fieldConfig = { handle: nestedField.handle, name: nestedField.name, type: nestedField.type, supported: nestedField.supported ?? true, maxRelations: nestedField.maxRelations ?? null } %}
                     {% if nestedField.type == 'table' %}
                         {% set fieldConfig = fieldConfig|merge({ columns: nestedField.columns }) %}
                         {% set entryTypeTableFields = entryTypeTableFields|merge({ (nestedField.handle): nestedField.columns }) %}
@@ -426,9 +457,14 @@
         function initSelectize(selectEl) {
             var $sel = $(selectEl);
             if ($sel[0].selectize) return;
-            $sel.selectize({
+            var opts = {
                 plugins: ['auto_position'],
-            });
+            };
+            var maxItems = selectEl.getAttribute('data-max-items');
+            if (maxItems) {
+                opts.maxItems = parseInt(maxItems, 10);
+            }
+            $sel.selectize(opts);
         }
 
         // Toggle static value input for regular fields
@@ -556,9 +592,14 @@
                     html += '</div>';
                     html += '</td></tr>';
                 } else if (field.type === 'asset') {
+                    var isMulti = !field.maxRelations || field.maxRelations !== 1;
                     html += '<tr>';
                     html += '<td style="vertical-align: middle; white-space: nowrap;">' + field.name + '<br><code style="font-size: 10px;">' + field.handle + '</code></td>';
-                    html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneo]" style="display:none">' + akeneoAssetOptionsHtml + '</select></td>';
+                    if (isMulti) {
+                        html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneoMulti][]" multiple data-max-items="' + (field.maxRelations || '') + '" style="display:none">' + akeneoAssetOptionsHtml + '</select></td>';
+                    } else {
+                        html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneo]" style="display:none">' + akeneoAssetOptionsHtml + '</select></td>';
+                    }
                     html += '<td></td>';
                     html += '</tr>';
                 } else if (!field.supported) {
@@ -598,6 +639,11 @@
             if (e.target.classList.contains('matrix-entry-row-delete')) {
                 e.target.closest('.matrix-entry-row').remove();
             }
+        });
+
+        // Init selectize on multi-select asset fields on page load
+        document.querySelectorAll('select[multiple]').forEach(function(sel) {
+            initSelectize(sel);
         });
     })(jQuery);
     {% endjs %}

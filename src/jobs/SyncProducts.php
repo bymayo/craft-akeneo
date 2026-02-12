@@ -5,22 +5,23 @@ namespace bymayo\akeneo\jobs;
 use bymayo\akeneo\Plugin;
 
 use Craft;
-use craft\queue\BaseJob;
+use craft\base\Batchable;
+use craft\queue\BaseBatchedJob;
 
-/**
- * Sync Products queue job
- */
-class SyncProducts extends BaseJob
+class SyncProducts extends BaseBatchedJob
 {
-
-    public $products;
-    public $batch;
-    public $syncImages;
     public int $sourceId;
+    public bool $syncImages = true;
+    public array $products = [];
+    public int $batchSize = 50;
 
-    function execute($queue): void
+    protected function loadData(): Batchable
     {
-        $totalProducts = count($this->products);
+        return new ArrayBatchable($this->products);
+    }
+
+    protected function processItem(mixed $item): void
+    {
         $source = Plugin::getInstance()->sources->getSourceById($this->sourceId);
 
         if (!$source) {
@@ -28,21 +29,13 @@ class SyncProducts extends BaseJob
             return;
         }
 
-        foreach ($this->products as $index => $product) {
-            Plugin::getInstance()->sync->createEntryFromMappings($source, $product, $this->syncImages);
-
-            $this->setProgress($queue, ($index + 1) / $totalProducts, Craft::t('app', '{step} out of {total}', [
-                'step' => $index + 1,
-                'total' => $totalProducts,
-            ]));
-        }
-
+        Plugin::getInstance()->sync->createEntryFromMappings($source, $item, $this->syncImages);
     }
 
     protected function defaultDescription(): ?string
     {
-        return Craft::t('app', 'Syncing Products from Akeneo (Batch {batch})', [
-            'batch' => $this->batch
+        return Craft::t('akeneo', 'Syncing {count} products from Akeneo', [
+            'count' => count($this->products),
         ]);
     }
 }

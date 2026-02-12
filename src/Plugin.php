@@ -16,6 +16,7 @@ use bymayo\akeneo\services\Sync;
 use bymayo\akeneo\widgets\SyncWidget;
 use craft\base\Plugin as BasePlugin;
 use yii\base\Event;
+use yii\web\Response;
 
 /**
  * Akeneo plugin
@@ -27,7 +28,7 @@ use yii\base\Event;
  */
 class Plugin extends BasePlugin
 {
-    public string $schemaVersion = '1.7.0';
+    public string $schemaVersion = '1.8.0';
     public bool $hasCpSettings = true;
     public bool $hasCpSection = true;
 
@@ -84,12 +85,22 @@ class Plugin extends BasePlugin
     {
         $item = parent::getCpNavItem();
 
+        $item['subnav'] = [
+            'sources' => ['label' => 'Sources', 'url' => 'akeneo/sources'],
+            'settings' => ['label' => 'Settings', 'url' => 'akeneo/settings'],
+        ];
+
         return $item;
     }
 
     protected function createSettingsModel(): Settings
     {
         return new Settings();
+    }
+
+    public function getSettingsResponse(): Response
+    {
+        return Craft::$app->getResponse()->redirect('akeneo/settings');
     }
 
     protected function settingsHtml(): ?string
@@ -107,6 +118,7 @@ class Plugin extends BasePlugin
             UrlManager::EVENT_REGISTER_CP_URL_RULES,
             function (RegisterUrlRulesEvent $event) {
                 $event->rules['akeneo'] = 'akeneo/sources/index';
+                $event->rules['akeneo/settings'] = 'akeneo/sources/settings';
                 $event->rules['akeneo/sources'] = 'akeneo/sources/index';
                 $event->rules['akeneo/sources/new'] = 'akeneo/sources/edit';
                 $event->rules['akeneo/sources/<sourceId:\d+>'] = 'akeneo/sources/edit';

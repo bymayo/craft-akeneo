@@ -1,0 +1,10 @@
+{% import '_includes/forms.twig' as forms %}
+
+{{ forms.selectField({
+    label: 'Source'|t('akeneo'),
+    instructions: 'Choose a specific source to display, or show all.'|t('akeneo'),
+    id: 'sourceId',
+    name: 'sourceId',
+    value: widget.sourceId ?? '',
+    options: sourceOptions,
+}) }}

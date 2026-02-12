@@ -1,0 +1,199 @@
+{% extends '_layouts/cp' %}
+
+{% import '_includes/forms.twig' as forms %}
+
+{% set fullPageForm = true %}
+
+{% set title = 'Akeneo Settings' %}
+{% set selectedSubnavItem = 'settings' %}
+
+{% set crumbs = [
+    { label: 'Akeneo', url: url('akeneo') },
+] %}
+
+{% set tabs = {
+    api: {
+        label: 'API',
+        url: '#api'
+    },
+    sync: {
+        label: 'Sync',
+        url: '#sync'
+    }
+} %}
+
+{% block content %}
+
+    <input type="hidden" name="action" value="plugins/save-plugin-settings">
+    <input type="hidden" name="pluginHandle" value="akeneo">
+    {{ redirectInput('akeneo/settings') }}
+
+    <div id="api">
+        <div class="field" style="margin-bottom: 24px;">
+            <div id="akeneo-connection-status" style="display: flex; align-items: center; gap: 6px;">
+                <span class="akeneo-status-dot" style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #aaa; flex-shrink: 0;"></span>
+                <span class="akeneo-status-label" style="font-weight: bold; color: #aaa;">Checking...</span>
+            </div>
+        </div>
+
+        <hr>
+
+        {{ forms.autosuggestField({
+            first: true,
+            label: 'API URL',
+            instructions: 'The base URL of your Akeneo PIM instance.',
+            id: 'apiUrl',
+            name: 'settings[apiUrl]',
+            value: settings.apiUrl,
+            suggestEnvVars: true,
+            required: true,
+            errors: settings.getErrors('apiUrl'),
+        }) }}
+
+        {{ forms.autosuggestField({
+            label: 'Client ID',
+            instructions: 'The Akeneo API client ID.',
+            id: 'clientId',
+            name: 'settings[clientId]',
+            value: settings.clientId,
+            suggestEnvVars: true,
+            required: true,
+            errors: settings.getErrors('clientId'),
+        }) }}
+
+        {{ forms.autosuggestField({
+            label: 'Secret Key',
+            instructions: 'The Akeneo API secret key.',
+            id: 'secretKey',
+            name: 'settings[secretKey]',
+            value: settings.secretKey,
+            suggestEnvVars: true,
+            required: true,
+            errors: settings.getErrors('secretKey'),
+        }) }}
+
+        {{ forms.autosuggestField({
+            label: 'Username',
+            instructions: 'The Akeneo API username.',
+            id: 'username',
+            name: 'settings[username]',
+            value: settings.username,
+            suggestEnvVars: true,
+            required: true,
+            errors: settings.getErrors('username'),
+        }) }}
+
+        {{ forms.autosuggestField({
+            label: 'Password',
+            instructions: 'The Akeneo API password.',
+            id: 'password',
+            name: 'settings[password]',
+            value: settings.password,
+            suggestEnvVars: true,
+            required: true,
+            errors: settings.getErrors('password'),
+        }) }}
+
+        {{ forms.textField({
+            label: 'Attribute Cache Duration',
+            instructions: 'How long (in seconds) to cache Akeneo attributes. Set to 0 to disable caching.',
+            id: 'attributeCacheDuration',
+            name: 'settings[attributeCacheDuration]',
+            value: settings.attributeCacheDuration,
+            type: 'number',
+            min: 0,
+            size: 10,
+            errors: settings.getErrors('attributeCacheDuration'),
+        }) }}
+
+    </div>
+
+    <div id="sync" class="hidden">
+        {{ forms.textField({
+            first: true,
+            label: 'Sync Page Size',
+            instructions: 'Number of products to fetch per API request during sync.',
+            id: 'syncPageSize',
+            name: 'settings[syncPageSize]',
+            value: settings.syncPageSize,
+            type: 'number',
+            min: 1,
+            max: 100,
+            size: 10,
+            errors: settings.getErrors('syncPageSize'),
+        }) }}
+
+        {{ forms.textField({
+            label: 'Sync Max Pages',
+            instructions: 'Maximum number of pages to fetch during a sync. Controls how many products are synced in total (page size x max pages).',
+            id: 'syncMaxPages',
+            name: 'settings[syncMaxPages]',
+            value: settings.syncMaxPages,
+            type: 'number',
+            min: 1,
+            size: 10,
+            errors: settings.getErrors('syncMaxPages'),
+        }) }}
+
+        {% set volumeOptions = [] %}
+        {% for volume in craft.app.volumes.getAllVolumes() %}
+            {% set volumeOptions = volumeOptions|merge([{ label: volume.name, value: volume.handle }]) %}
+        {% endfor %}
+
+        {{ forms.selectField({
+            label: 'Asset Volume',
+            instructions: 'The Craft asset volume to store Akeneo images in.',
+            id: 'assetVolumeHandle',
+            name: 'settings[assetVolumeHandle]',
+            value: settings.assetVolumeHandle,
+            options: volumeOptions,
+            required: true,
+            errors: settings.getErrors('assetVolumeHandle'),
+        }) }}
+
+        {{ forms.textField({
+            label: 'Asset Folder Name',
+            instructions: 'The folder name within the volume where Akeneo images are stored.',
+            id: 'assetFolderName',
+            name: 'settings[assetFolderName]',
+            value: settings.assetFolderName,
+            required: true,
+            errors: settings.getErrors('assetFolderName'),
+        }) }}
+    </div>
+
+{% endblock %}
+
+{% js %}
+(function() {
+    var dot = document.querySelector('.akeneo-status-dot');
+    var label = document.querySelector('.akeneo-status-label');
+
+    var url = Craft.actionUrl + '/akeneo/sync/test-connection';
+    var body = new FormData();
+    body.append(Craft.csrfTokenName, Craft.csrfTokenValue);
+
+    fetch(url, {
+        method: 'POST',
+        headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'},
+        body: body
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data && data.success) {
+            dot.style.background = '#2E7D32';
+            label.textContent = 'Connected';
+            label.style.color = '#2E7D32';
+        } else {
+            dot.style.background = '#C62828';
+            label.textContent = 'Failed to Connect. Check connection settings';
+            label.style.color = '#C62828';
+        }
+    })
+    .catch(function() {
+        dot.style.background = '#C62828';
+        label.textContent = 'Not Connected';
+        label.style.color = '#C62828';
+    });
+})();
+{% endjs %}

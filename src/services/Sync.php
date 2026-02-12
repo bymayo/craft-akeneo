@@ -10,12 +10,13 @@ use yii\base\Component;
 use Akeneo\Pim\ApiClient\AkeneoPimClientBuilder;
 use Akeneo\Pim\ApiClient\Search\SearchBuilder;
 
-use bymayo\akeneo\jobs\SyncProducts;
+use bymayo\akeneo\jobs\FetchProducts;
 use bymayo\akeneo\models\Source;
 
 use craft\elements\Entry;
 use craft\elements\Asset;
 use craft\helpers\Assets as AssetsHelper;
+use craft\helpers\Queue;
 use craft\helpers\StringHelper;
 
 /**
@@ -59,44 +60,13 @@ class Sync extends Component
 
     public function syncBySource(Source $source, bool $syncImages): void
     {
-        $settings = Plugin::getInstance()->getSettings();
-
-        $searchFilters = $this->buildSearchFilters($source);
-
-        $pageSize = $settings->syncPageSize;
-        $iterationMax = $settings->syncMaxPages;
-
-        $queryParams = !empty($searchFilters) ? ['search' => $searchFilters] : [];
-        $currentPage = $this->client->getProductApi()->listPerPage($pageSize, true, $queryParams);
-
-        $iterationCount = 0;
-
-        do {
-            $products = $currentPage->getItems();
-
-            if ($iterationCount === 0) {
-                Plugin::log("Syncing source '{$source->name}' - Total Products: " . $currentPage->getCount());
-            }
-
-            $job = new SyncProducts([
-                'products' => $products,
-                'sourceId' => $source->id,
-                'batch' => $iterationCount + 1,
-                'syncImages' => $syncImages,
-            ]);
-
-            Craft::$app->queue->push($job);
-
-            $currentPage = $currentPage->getNextPage();
-            $iterationCount++;
-
-            if ($iterationCount >= $iterationMax) {
-                break;
-            }
-        } while (null !== $currentPage);
+        Queue::push(new FetchProducts([
+            'sourceId' => $source->id,
+            'syncImages' => $syncImages,
+        ]));
     }
 
-    private function buildSearchFilters(Source $source): array
+    public function buildSearchFilters(Source $source): array
     {
         $filtersJson = $source->filters;
 
@@ -204,9 +174,12 @@ class Sync extends Component
 
         $entry = null;
 
+        $siteId = $source->siteId ?: Craft::$app->getSites()->getPrimarySite()->id;
+
         if ($identifierValue && $identifierHandle) {
             $query = Entry::find()
                 ->sectionId($section->id)
+                ->siteId($siteId)
                 ->status(['live', 'pending', 'expired', 'disabled']);
 
             if ($identifierHandle === 'title') {
@@ -223,6 +196,7 @@ class Sync extends Component
         if (!$entry) {
             $entry = new Entry();
             $entry->sectionId = $section->id;
+            $entry->siteId = $siteId;
         }
 
         $entry->enabled = true;
@@ -236,11 +210,25 @@ class Sync extends Component
             $decoded = json_decode($akeneoAttr, true);
 
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                // Check if it's a table (sequential array) or matrix (associative object)
                 if (array_is_list($decoded)) {
-                    // Table field
-                    $tableData = $this->resolveTableRows($decoded, $values, $attributeTypes, $locale);
-                    $entry->setFieldValue($handle, $tableData);
+                    // Check first element to distinguish: strings = multi-asset, objects = table rows
+                    if (!empty($decoded) && is_string($decoded[0])) {
+                        // Multi-asset field
+                        if ($syncImages) {
+                            $allAssetIds = [];
+                            foreach ($decoded as $assetCode) {
+                                $assetIds = $this->resolveAssetField($assetCode, $values);
+                                $allAssetIds = array_merge($allAssetIds, $assetIds);
+                            }
+                            if (!empty($allAssetIds)) {
+                                $entry->setFieldValue($handle, $allAssetIds);
+                            }
+                        }
+                    } else {
+                        // Table field
+                        $tableData = $this->resolveTableRows($decoded, $values, $attributeTypes, $locale);
+                        $entry->setFieldValue($handle, $tableData);
+                    }
                 } else {
                     // Matrix field
                     $matrixData = $this->resolveMatrixMapping($decoded, $values, $attributeTypes, $syncImages, $locale);
@@ -362,9 +350,24 @@ class Sync extends Component
                 $fields = [];
 
                 foreach ($row as $fieldHandle => $fieldValue) {
-                    // Nested table field (value is an array of table rows)
+                    // Nested array field (table rows or multi-asset)
                     if (is_array($fieldValue)) {
-                        $fields[$fieldHandle] = $this->resolveTableRows($fieldValue, $values, $attributeTypes, $locale);
+                        if (!empty($fieldValue) && is_string($fieldValue[0] ?? null)) {
+                            // Multi-asset field (array of akeneo codes)
+                            if ($syncImages) {
+                                $allAssetIds = [];
+                                foreach ($fieldValue as $assetCode) {
+                                    $assetIds = $this->resolveAssetField($assetCode, $values);
+                                    $allAssetIds = array_merge($allAssetIds, $assetIds);
+                                }
+                                if (!empty($allAssetIds)) {
+                                    $fields[$fieldHandle] = $allAssetIds;
+                                }
+                            }
+                        } else {
+                            // Table field (array of row objects)
+                            $fields[$fieldHandle] = $this->resolveTableRows($fieldValue, $values, $attributeTypes, $locale);
+                        }
                         continue;
                     }
 
@@ -469,24 +472,33 @@ class Sync extends Component
 
     public function createAsset($filename, $url, $subfolderName = null)
     {
+        $settings = Plugin::getInstance()->getSettings();
+        $folderName = $settings->assetFolderName;
+        $folderSlug = StringHelper::toKebabCase($folderName);
 
         // Get the volume folder
-        $volume = Craft::$app->volumes->getVolumeByHandle('images');
+        $volume = Craft::$app->volumes->getVolumeByHandle($settings->assetVolumeHandle);
+
+        if (!$volume) {
+            Plugin::log("Asset volume '{$settings->assetVolumeHandle}' not found");
+            return null;
+        }
+
         $rootFolder = Craft::$app->assets->getRootFolderByVolumeId($volume->id);
 
         // Create Akeneo folder
         $akeneoSubfolder = Craft::$app->assets->findFolder([
             'parentId' => $rootFolder->id,
-            'name' => 'akeneo',
+            'name' => $folderName,
         ]);
 
         if (!$akeneoSubfolder) {
 
             $akeneoSubfolder = new \craft\models\VolumeFolder();
-            $akeneoSubfolder->name = 'akeneo';
+            $akeneoSubfolder->name = $folderName;
             $akeneoSubfolder->parentId = $rootFolder->id;
             $akeneoSubfolder->volumeId = $volume->id;
-            $akeneoSubfolder->path = 'akeneo/';
+            $akeneoSubfolder->path = $folderSlug . '/';
 
             if (!Craft::$app->assets->createFolder($akeneoSubfolder)) {
                 Craft::error('Failed to create Akeneo subfolder', __METHOD__);

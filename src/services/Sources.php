@@ -65,6 +65,7 @@ class Sources extends Component
             $record->orphanedEntryAction = $source->orphanedEntryAction;
             $record->entryIdentifier = $source->entryIdentifier;
             $record->akeneoLocale = $source->akeneoLocale;
+            $record->siteId = $source->siteId;
             $record->filters = $source->filters;
 
             $record->save(false);
@@ -290,6 +291,7 @@ class Sources extends Component
                 }
             } elseif ($field instanceof \craft\fields\Assets) {
                 $fieldData['type'] = 'asset';
+                $fieldData['maxRelations'] = $field->maxRelations;
             } elseif ($field instanceof \craft\fields\Matrix) {
                 $fieldData['type'] = 'matrix';
                 $fieldData['entryTypes'] = [];
@@ -321,6 +323,7 @@ class Sources extends Component
                             }
                         } elseif ($nestedField instanceof \craft\fields\Assets) {
                             $nestedFieldData['type'] = 'asset';
+                            $nestedFieldData['maxRelations'] = $nestedField->maxRelations;
                         }
 
                         $entryTypeData['fields'][] = $nestedFieldData;
@@ -437,6 +440,7 @@ class Sources extends Component
         $source->orphanedEntryAction = $record->orphanedEntryAction;
         $source->entryIdentifier = $record->entryIdentifier;
         $source->akeneoLocale = $record->akeneoLocale;
+        $source->siteId = $record->siteId ? (int) $record->siteId : null;
         $source->filters = $record->filters;
         $source->lastImportedAt = $record->lastImportedAt;
         $source->uid = $record->uid;
