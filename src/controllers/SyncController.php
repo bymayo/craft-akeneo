@@ -70,6 +70,8 @@ class SyncController extends Controller
             default => throw new BadRequestHttpException('Invalid sync type'),
         };
 
+        Plugin::getInstance()->sources->updateLastImportedAt($sourceId);
+
         return $this->asJson(['success' => true]);
     }
 }

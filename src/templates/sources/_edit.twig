@@ -54,4 +54,82 @@
         required: true,
     }) }}
 
+    {{ forms.selectField({
+        label: 'Orphaned Entry Action'|t('akeneo'),
+        instructions: 'What should happen to Craft entries that no longer exist in Akeneo after a sync completes.'|t('akeneo'),
+        id: 'orphanedEntryAction',
+        name: 'orphanedEntryAction',
+        value: source.orphanedEntryAction ?? 'doNothing',
+        options: [
+            { label: 'Do Nothing', value: 'doNothing' },
+            { label: 'Disable', value: 'disable' },
+            { label: 'Delete', value: 'delete' },
+        ],
+        errors: source.getErrors('orphanedEntryAction'),
+    }) }}
+
+    {% if source.id %}
+        <hr>
+
+        <div class="field">
+            <div class="heading">
+                <label>Console Commands</label>
+                <div class="instructions"><p>Use these commands to trigger syncs from the terminal or cron jobs.</p></div>
+            </div>
+            <div class="input">
+                <div style="margin-bottom: 8px;">
+                    <label class="light" style="display: block; margin-bottom: 4px;">Sync All (Data + Images)</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/all --source={{ source.id }}">
+                        <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
+                    </div>
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <label class="light" style="display: block; margin-bottom: 4px;">Sync Data Only</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/data-only --source={{ source.id }}">
+                        <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="light" style="display: block; margin-bottom: 4px;">Sync Images Only</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/images-only --source={{ source.id }}">
+                        <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <hr>
+
+    <button type="button" class="btn" id="refresh-akeneo-attributes-btn">Refresh Akeneo Attributes</button>
+
+    <script type="text/javascript">
+    document.getElementById('refresh-akeneo-attributes-btn').addEventListener('click', function() {
+        var form = document.createElement('form');
+        form.method = 'post';
+        form.style.display = 'none';
+
+        var csrfInput = document.createElement('input');
+        csrfInput.name = '{{ craft.app.config.general.csrfTokenName }}';
+        csrfInput.value = '{{ craft.app.request.csrfToken }}';
+        form.appendChild(csrfInput);
+
+        var actionInput = document.createElement('input');
+        actionInput.name = 'action';
+        actionInput.value = 'akeneo/sources/refresh-akeneo-attributes';
+        form.appendChild(actionInput);
+
+        var sourceInput = document.createElement('input');
+        sourceInput.name = 'sourceId';
+        sourceInput.value = '{{ source.id ?? 0 }}';
+        form.appendChild(sourceInput);
+
+        document.body.appendChild(form);
+        form.submit();
+    });
+    </script>
+
 {% endblock %}

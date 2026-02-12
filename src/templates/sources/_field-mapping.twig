@@ -35,7 +35,7 @@
 
     {# Build selectize options array with optgroups #}
     {% set akeneoSelectOptions = [
-        { value: '', label: "Don't import" },
+        { value: '__none__', label: "Don't import" },
         { value: '__static__', label: 'Static Value' },
     ] %}
     {% set lastType = null %}
@@ -45,6 +45,16 @@
             {% set akeneoSelectOptions = akeneoSelectOptions|merge([{ optgroup: lastType ?: 'Other' }]) %}
         {% endif %}
         {% set akeneoSelectOptions = akeneoSelectOptions|merge([{ value: attribute.code, label: attribute.label }]) %}
+    {% endfor %}
+
+    {# Build asset-only selectize options (pim_catalog_asset_collection only) #}
+    {% set akeneoAssetSelectOptions = [
+        { value: '__none__', label: "Don't import" },
+    ] %}
+    {% for attribute in akeneoAttributes %}
+        {% if (attribute.type ?? '') == 'pim_catalog_asset_collection' %}
+            {% set akeneoAssetSelectOptions = akeneoAssetSelectOptions|merge([{ value: attribute.code, label: attribute.label }]) %}
+        {% endif %}
     {% endfor %}
 
     {# Build lookup of existing mappings by handle #}
@@ -57,7 +67,7 @@
         <thead>
             <tr>
                 <th>Field</th>
-                <th>Handle</th>
+                <th>Fieldtype</th>
                 <th>Akeneo Attribute</th>
                 <th>Static Value</th>
             </tr>
@@ -67,17 +77,22 @@
                 {% set idx = loop.index0 %}
                 {% set currentValue = mappingsByHandle[field.handle] ?? '' %}
 
+                {% if idx == 2 %}
+                    <tr><td colspan="4" style="padding: 0;"><hr style="margin: 8px 0;"></td></tr>
+                {% endif %}
+
                 {% if field.type == 'table' %}
                     {# Decode existing table rows from JSON #}
                     {% set tableRows = currentValue ? currentValue|json_decode : [] %}
 
                     <tr>
                         <td style="vertical-align: top;">
-                            {{ field.name }}
+                            {{ field.name }}<br>
+                            <code>{{ field.handle }}</code>
                             <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
                         </td>
                         <td style="vertical-align: top;">
-                            <code>{{ field.handle }}</code>
+                            <span class="light">{{ field.fieldType }}</span>
                         </td>
                         <td colspan="2">
                             <div class="table-field-mapping" data-field-index="{{ idx }}">
@@ -97,7 +112,7 @@
                                                     {% for colId, col in field.columns %}
                                                         {% set colAkeneo = row[colId].akeneo ?? '' %}
                                                         {% set colStatic = row[colId].static ?? '' %}
-                                                        {% set colValue = colAkeneo == '__static__' or (colStatic and not colAkeneo) ? '__static__' : colAkeneo %}
+                                                        {% set colValue = colAkeneo == '__static__' or (colStatic and not colAkeneo) ? '__static__' : (colAkeneo ?: '__none__') %}
                                                         <tr>
                                                             <td style="vertical-align: middle; white-space: nowrap;">
                                                                 {{ col.heading }}
@@ -123,32 +138,219 @@
                             </div>
                         </td>
                     </tr>
-                {% else %}
-                    {# Check if current value is a static value #}
-                    {% set isStatic = currentValue starts with 'static:' %}
-                    {% set staticVal = isStatic ? currentValue|slice(7) : '' %}
-                    {% set selectVal = isStatic ? '__static__' : currentValue %}
+                {% elseif field.type == 'matrix' %}
+                    {# Decode existing matrix mappings from JSON #}
+                    {% set matrixData = currentValue ? currentValue|json_decode : {} %}
 
                     <tr>
+                        <td style="vertical-align: top;">
+                            {{ field.name }}<br>
+                            <code>{{ field.handle }}</code>
+                            <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
+                        </td>
+                        <td style="vertical-align: top;">
+                            <span class="light">{{ field.fieldType }}</span>
+                        </td>
+                        <td colspan="2">
+                            {% for entryType in field.entryTypes %}
+                                {% set etRows = matrixData[entryType.handle] ?? [] %}
+                                <div class="matrix-entry-type" style="border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px;" data-field-index="{{ idx }}" data-matrix-field="{{ field.handle }}" data-entry-type="{{ entryType.handle }}">
+                                    <h4 style="margin: 0 0 8px 0;">{{ entryType.name }}</h4>
+                                    <div class="matrix-entry-rows">
+                                        {% for row in etRows %}
+                                            {% set matrixRowIdx = loop.index0 %}
+                                            <div class="matrix-entry-row" style="border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;">
+                                                <a class="delete icon matrix-entry-row-delete" title="Remove" style="position: absolute; top: 10px; right: 10px;"></a>
+                                                <table class="data fullwidth">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Field</th>
+                                                            <th>Akeneo Attribute</th>
+                                                            <th>Static Value</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for nestedField in entryType.fields %}
+                                                            {% if nestedField.type == 'table' %}
+                                                                {# Table field inside Matrix entry row #}
+                                                                {% set nestedTableRows = row[nestedField.handle] ?? [] %}
+                                                                <tr>
+                                                                    <td style="vertical-align: top;" colspan="3">
+                                                                        <strong>{{ nestedField.name }}</strong>
+                                                                        <br>
+                                                                        <code style="font-size: 10px;">{{ nestedField.handle }}</code>
+                                                                        <div class="table-field-mapping" data-field-index="{{ idx }}" data-matrix-field="{{ field.handle }}" data-entry-type="{{ entryType.handle }}" data-matrix-row="{{ matrixRowIdx }}" data-table-field="{{ nestedField.handle }}">
+                                                                            <div class="table-rows-body">
+                                                                                {% for tableRow in nestedTableRows %}
+                                                                                    {% set tableRowIdx = loop.index0 %}
+                                                                                    <div class="table-mapping-row" style="border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;">
+                                                                                        <a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 10px; right: 10px;"></a>
+                                                                                        <table class="data fullwidth">
+                                                                                            <thead>
+                                                                                                <tr>
+                                                                                                    <th>Column</th>
+                                                                                                    <th>Akeneo Attribute</th>
+                                                                                                    <th>Static Value</th>
+                                                                                                </tr>
+                                                                                            </thead>
+                                                                                            <tbody>
+                                                                                                {% for colId, col in nestedField.columns %}
+                                                                                                    {% set colAkeneo = tableRow[colId].akeneo ?? '' %}
+                                                                                                    {% set colStatic = tableRow[colId].static ?? '' %}
+                                                                                                    {% set colValue = colAkeneo == '__static__' or (colStatic and not colAkeneo) ? '__static__' : (colAkeneo ?: '__none__') %}
+                                                                                                    <tr>
+                                                                                                        <td style="vertical-align: middle; white-space: nowrap;">
+                                                                                                            {{ col.heading }}
+                                                                                                        </td>
+                                                                                                        <td>
+                                                                                                            {{ forms.selectize({
+                                                                                                                name: 'mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][tableRows][' ~ tableRowIdx ~ '][' ~ colId ~ '][akeneo]',
+                                                                                                                value: colValue,
+                                                                                                                options: akeneoSelectOptions,
+                                                                                                            }) }}
+                                                                                                        </td>
+                                                                                                        <td>
+                                                                                                            <input type="text" name="mappings[{{ idx }}][matrix][{{ entryType.handle }}][{{ matrixRowIdx }}][{{ nestedField.handle }}][tableRows][{{ tableRowIdx }}][{{ colId }}][static]" value="{{ colStatic }}" class="fullwidth text" placeholder="Enter value…">
+                                                                                                        </td>
+                                                                                                    </tr>
+                                                                                                {% endfor %}
+                                                                                            </tbody>
+                                                                                        </table>
+                                                                                    </div>
+                                                                                {% endfor %}
+                                                                            </div>
+                                                                            <button type="button" class="btn small add icon add-table-row-btn">Add row</button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            {% elseif nestedField.type == 'asset' %}
+                                                                {# Asset field inside Matrix entry row #}
+                                                                {% set nestedValue = row[nestedField.handle] ?? '' %}
+                                                                <tr>
+                                                                    <td style="vertical-align: middle; white-space: nowrap;">
+                                                                        {{ nestedField.name }}
+                                                                        <br>
+                                                                        <code style="font-size: 10px;">{{ nestedField.handle }}</code>
+                                                                    </td>
+                                                                    <td>
+                                                                        {{ forms.selectize({
+                                                                            name: 'mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][akeneo]',
+                                                                            value: nestedValue ?: '__none__',
+                                                                            options: akeneoAssetSelectOptions,
+                                                                        }) }}
+                                                                    </td>
+                                                                    <td></td>
+                                                                </tr>
+                                                            {% else %}
+                                                                {# Regular field inside Matrix entry row #}
+                                                                {% if not nestedField.supported %}
+                                                                    <tr>
+                                                                        <td style="vertical-align: middle; white-space: nowrap;">
+                                                                            {{ nestedField.name }}
+                                                                            <br>
+                                                                            <code style="font-size: 10px;">{{ nestedField.handle }}</code>
+                                                                        </td>
+                                                                        <td colspan="2">
+                                                                            <span class="light">Not supported</span>
+                                                                        </td>
+                                                                    </tr>
+                                                                {% else %}
+                                                                    {% set nestedValue = row[nestedField.handle] ?? '' %}
+                                                                    {% set nestedIsStatic = nestedValue starts with 'static:' %}
+                                                                    {% set nestedStaticVal = nestedIsStatic ? nestedValue|slice(7) : '' %}
+                                                                    {% set nestedSelectVal = nestedIsStatic ? '__static__' : (nestedValue ?: '__none__') %}
+                                                                    <tr>
+                                                                        <td style="vertical-align: middle; white-space: nowrap;">
+                                                                            {{ nestedField.name }}
+                                                                            <br>
+                                                                            <code style="font-size: 10px;">{{ nestedField.handle }}</code>
+                                                                        </td>
+                                                                        <td>
+                                                                            {{ forms.selectize({
+                                                                                name: 'mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][akeneo]',
+                                                                                value: nestedSelectVal,
+                                                                                options: akeneoSelectOptions,
+                                                                            }) }}
+                                                                        </td>
+                                                                        <td>
+                                                                            <input type="text" name="mappings[{{ idx }}][matrix][{{ entryType.handle }}][{{ matrixRowIdx }}][{{ nestedField.handle }}][static]" value="{{ nestedStaticVal }}" class="fullwidth text matrix-static-value-input" placeholder="Enter value…" {% if not nestedIsStatic %}disabled{% endif %}>
+                                                                        </td>
+                                                                    </tr>
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    <button type="button" class="btn small add icon add-matrix-entry-btn">Add entry</button>
+                                </div>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                {% elseif field.type == 'asset' %}
+                    <tr>
                         <td style="vertical-align: middle;">
-                            {{ field.name }}
+                            {{ field.name }}<br>
+                            <code>{{ field.handle }}</code>
                             <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
                         </td>
                         <td style="vertical-align: middle;">
-                            <code>{{ field.handle }}</code>
+                            <span class="light">{{ field.fieldType }}</span>
                         </td>
                         <td>
                             {{ forms.selectize({
                                 name: 'mappings[' ~ idx ~ '][akeneoAttribute]',
                                 id: 'akeneo-select-' ~ idx,
-                                value: selectVal,
-                                options: akeneoSelectOptions,
+                                value: currentValue ?: '__none__',
+                                options: akeneoAssetSelectOptions,
                             }) }}
                         </td>
-                        <td>
-                            <input type="text" name="mappings[{{ idx }}][staticValue]" value="{{ staticVal }}" class="fullwidth text static-value-input" data-field-index="{{ idx }}" placeholder="Enter value…" {% if not isStatic %}disabled{% endif %}>
-                        </td>
+                        <td></td>
                     </tr>
+                {% else %}
+                    {% if not field.supported %}
+                        <tr>
+                            <td style="vertical-align: middle;">
+                                {{ field.name }}<br>
+                                <code>{{ field.handle }}</code>
+                            </td>
+                            <td style="vertical-align: middle;">
+                                <span class="light">{{ field.fieldType }}</span>
+                            </td>
+                            <td colspan="2">
+                                <span class="light">Not supported</span>
+                            </td>
+                        </tr>
+                    {% else %}
+                        {# Check if current value is a static value #}
+                        {% set isStatic = currentValue starts with 'static:' %}
+                        {% set staticVal = isStatic ? currentValue|slice(7) : '' %}
+                        {% set selectVal = isStatic ? '__static__' : (currentValue ?: '__none__') %}
+
+                        <tr>
+                            <td style="vertical-align: middle;">
+                                {{ field.name }}<br>
+                                <code>{{ field.handle }}</code>
+                                <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
+                            </td>
+                            <td style="vertical-align: middle;">
+                                <span class="light">{{ field.fieldType }}</span>
+                            </td>
+                            <td>
+                                {{ forms.selectize({
+                                    name: 'mappings[' ~ idx ~ '][akeneoAttribute]',
+                                    id: 'akeneo-select-' ~ idx,
+                                    value: selectVal,
+                                    options: akeneoSelectOptions,
+                                }) }}
+                            </td>
+                            <td>
+                                <input type="text" name="mappings[{{ idx }}][staticValue]" value="{{ staticVal }}" class="fullwidth text static-value-input" data-field-index="{{ idx }}" placeholder="Enter value…" {% if not isStatic %}disabled{% endif %}>
+                            </td>
+                        </tr>
+                    {% endif %}
                 {% endif %}
             {% endfor %}
         </tbody>
@@ -156,7 +358,7 @@
 
     {# Build options HTML for JS dynamic table rows #}
     {% set akeneoOptionsHtml %}
-<option value="">Don't import</option>
+<option value="__none__">Don't import</option>
 <option value="__static__">Static Value</option>
 {% set lastJsType = null %}
 {% for attribute in akeneoAttributes %}
@@ -170,18 +372,56 @@
 {% if lastJsType is not null %}</optgroup>{% endif %}
     {% endset %}
 
+    {# Build asset-only options HTML for JS dynamic matrix rows #}
+    {% set akeneoAssetOptionsHtml %}
+<option value="__none__">Don't import</option>
+{% for attribute in akeneoAttributes %}
+{% if (attribute.type ?? '') == 'pim_catalog_asset_collection' %}
+<option value="{{ attribute.code }}">{{ attribute.label }}</option>
+{% endif %}
+{% endfor %}
+    {% endset %}
+
     {# Build column config per table field for JS #}
     {% set tableFieldColumns = {} %}
+    {% set matrixTableFieldColumns = {} %}
+    {% set matrixFieldConfig = {} %}
     {% for field in craftFields %}
         {% if field.type == 'table' %}
             {% set tableFieldColumns = tableFieldColumns|merge({ (field.handle): field.columns }) %}
+        {% elseif field.type == 'matrix' %}
+            {% set entryTypesConfig = {} %}
+            {% set matrixEntryTypes = {} %}
+            {% for entryType in field.entryTypes %}
+                {% set fieldsConfig = [] %}
+                {% set entryTypeTableFields = {} %}
+                {% for nestedField in entryType.fields %}
+                    {% set fieldConfig = { handle: nestedField.handle, name: nestedField.name, type: nestedField.type, supported: nestedField.supported ?? true } %}
+                    {% if nestedField.type == 'table' %}
+                        {% set fieldConfig = fieldConfig|merge({ columns: nestedField.columns }) %}
+                        {% set entryTypeTableFields = entryTypeTableFields|merge({ (nestedField.handle): nestedField.columns }) %}
+                    {% endif %}
+                    {% set fieldsConfig = fieldsConfig|merge([fieldConfig]) %}
+                {% endfor %}
+                {% set entryTypesConfig = entryTypesConfig|merge({ (entryType.handle): { name: entryType.name, fields: fieldsConfig } }) %}
+                {% if entryTypeTableFields|length %}
+                    {% set matrixEntryTypes = matrixEntryTypes|merge({ (entryType.handle): entryTypeTableFields }) %}
+                {% endif %}
+            {% endfor %}
+            {% set matrixFieldConfig = matrixFieldConfig|merge({ (field.handle): entryTypesConfig }) %}
+            {% if matrixEntryTypes|length %}
+                {% set matrixTableFieldColumns = matrixTableFieldColumns|merge({ (field.handle): matrixEntryTypes }) %}
+            {% endif %}
         {% endif %}
     {% endfor %}
 
-    <script type="text/javascript">
-    (function() {
+    {% js %}
+    (function($) {
         var akeneoOptionsHtml = {{ akeneoOptionsHtml|json_encode|raw }};
+        var akeneoAssetOptionsHtml = {{ akeneoAssetOptionsHtml|json_encode|raw }};
         var tableFieldColumns = {{ tableFieldColumns|json_encode|raw }};
+        var matrixTableFieldColumns = {{ matrixTableFieldColumns|json_encode|raw }};
+        var matrixFieldConfig = {{ matrixFieldConfig|json_encode|raw }};
 
         function initSelectize(selectEl) {
             var $sel = $(selectEl);
@@ -192,14 +432,13 @@
         }
 
         // Toggle static value input for regular fields
-        document.addEventListener('change', function(e) {
-            if (!e.target.matches('select[name*="[akeneoAttribute]"]')) return;
-            var tr = e.target.closest('tr');
+        $(document).on('change', 'select[name*="[akeneoAttribute]"]', function() {
+            var tr = $(this).closest('tr')[0];
             if (!tr) return;
             var staticInput = tr.querySelector('.static-value-input');
             if (!staticInput) return;
 
-            if (e.target.value === '__static__') {
+            if (this.value === '__static__') {
                 staticInput.disabled = false;
                 staticInput.focus();
             } else {
@@ -208,7 +447,25 @@
             }
         });
 
-        // Add table row
+        // Toggle static value input for matrix regular fields
+        $(document).on('change', 'select[name*="[matrix]"][name*="[akeneo]"]', function() {
+            // Skip table column selects (they contain [tableRows])
+            if (this.name.indexOf('[tableRows]') !== -1) return;
+            var tr = $(this).closest('tr')[0];
+            if (!tr) return;
+            var staticInput = tr.querySelector('.matrix-static-value-input');
+            if (!staticInput) return;
+
+            if (this.value === '__static__') {
+                staticInput.disabled = false;
+                staticInput.focus();
+            } else {
+                staticInput.disabled = true;
+                staticInput.value = '';
+            }
+        });
+
+        // Add table row (top-level or inside matrix entry row)
         document.addEventListener('click', function(e) {
             var addBtn = e.target.closest('.add-table-row-btn');
             if (!addBtn) return;
@@ -218,9 +475,26 @@
             var body = wrapper.querySelector('.table-rows-body');
             var rowIndex = body.querySelectorAll('.table-mapping-row').length;
 
-            var hiddenInput = wrapper.closest('tr').querySelector('input[type="hidden"]');
-            var fieldHandle = hiddenInput.value;
-            var columns = tableFieldColumns[fieldHandle];
+            var matrixField = wrapper.getAttribute('data-matrix-field');
+            var entryTypeHandle = wrapper.getAttribute('data-entry-type');
+            var matrixRowIndex = wrapper.getAttribute('data-matrix-row');
+            var tableFieldHandle = wrapper.getAttribute('data-table-field');
+            var columns;
+            var namePrefix;
+
+            if (matrixField && entryTypeHandle && tableFieldHandle && matrixRowIndex !== null) {
+                // Table field inside Matrix entry row
+                columns = matrixTableFieldColumns[matrixField] && matrixTableFieldColumns[matrixField][entryTypeHandle]
+                    ? matrixTableFieldColumns[matrixField][entryTypeHandle][tableFieldHandle]
+                    : null;
+                namePrefix = 'mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + matrixRowIndex + '][' + tableFieldHandle + '][tableRows][' + rowIndex + ']';
+            } else {
+                // Top-level table field
+                var hiddenInput = wrapper.closest('tr').querySelector('input[type="hidden"]');
+                var fieldHandle = hiddenInput.value;
+                columns = tableFieldColumns[fieldHandle];
+                namePrefix = 'mappings[' + fieldIndex + '][tableRows][' + rowIndex + ']';
+            }
 
             if (!columns) return;
 
@@ -234,10 +508,72 @@
             for (var colId in columns) {
                 html += '<tr>';
                 html += '<td style="vertical-align: middle; white-space: nowrap;">' + columns[colId].heading + '</td>';
-                html += '<td><select name="mappings[' + fieldIndex + '][tableRows][' + rowIndex + '][' + colId + '][akeneo]" style="display:none">' + akeneoOptionsHtml + '</select></td>';
-                html += '<td><input type="text" name="mappings[' + fieldIndex + '][tableRows][' + rowIndex + '][' + colId + '][static]" value="" class="fullwidth text" placeholder="Enter value…"></td>';
+                html += '<td><select name="' + namePrefix + '[' + colId + '][akeneo]" style="display:none">' + akeneoOptionsHtml + '</select></td>';
+                html += '<td><input type="text" name="' + namePrefix + '[' + colId + '][static]" value="" class="fullwidth text" placeholder="Enter value…"></td>';
                 html += '</tr>';
             }
+
+            html += '</tbody></table>';
+
+            div.innerHTML = html;
+            body.appendChild(div);
+
+            // Init selectize on new selects
+            div.querySelectorAll('select').forEach(function(sel) {
+                initSelectize(sel);
+            });
+        });
+
+        // Add matrix entry row
+        document.addEventListener('click', function(e) {
+            var addBtn = e.target.closest('.add-matrix-entry-btn');
+            if (!addBtn) return;
+
+            var wrapper = addBtn.closest('.matrix-entry-type');
+            var fieldIndex = wrapper.getAttribute('data-field-index');
+            var matrixFieldHandle = wrapper.getAttribute('data-matrix-field');
+            var entryTypeHandle = wrapper.getAttribute('data-entry-type');
+            var body = wrapper.querySelector('.matrix-entry-rows');
+            var rowIndex = body.querySelectorAll('.matrix-entry-row').length;
+
+            var entryTypeConfig = matrixFieldConfig[matrixFieldHandle] && matrixFieldConfig[matrixFieldHandle][entryTypeHandle];
+            if (!entryTypeConfig) return;
+
+            var div = document.createElement('div');
+            div.className = 'matrix-entry-row';
+            div.style.cssText = 'border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;';
+
+            var html = '<a class="delete icon matrix-entry-row-delete" title="Remove" style="position: absolute; top: 10px; right: 10px;"></a>';
+            html += '<table class="data fullwidth"><thead><tr><th>Field</th><th>Akeneo Attribute</th><th>Static Value</th></tr></thead><tbody>';
+
+            entryTypeConfig.fields.forEach(function(field) {
+                if (field.type === 'table') {
+                    html += '<tr><td style="vertical-align: top;" colspan="3">';
+                    html += '<strong>' + field.name + '</strong><br><code style="font-size: 10px;">' + field.handle + '</code>';
+                    html += '<div class="table-field-mapping" data-field-index="' + fieldIndex + '" data-matrix-field="' + matrixFieldHandle + '" data-entry-type="' + entryTypeHandle + '" data-matrix-row="' + rowIndex + '" data-table-field="' + field.handle + '">';
+                    html += '<div class="table-rows-body"></div>';
+                    html += '<button type="button" class="btn small add icon add-table-row-btn">Add row</button>';
+                    html += '</div>';
+                    html += '</td></tr>';
+                } else if (field.type === 'asset') {
+                    html += '<tr>';
+                    html += '<td style="vertical-align: middle; white-space: nowrap;">' + field.name + '<br><code style="font-size: 10px;">' + field.handle + '</code></td>';
+                    html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneo]" style="display:none">' + akeneoAssetOptionsHtml + '</select></td>';
+                    html += '<td></td>';
+                    html += '</tr>';
+                } else if (!field.supported) {
+                    html += '<tr>';
+                    html += '<td style="vertical-align: middle; white-space: nowrap;">' + field.name + '<br><code style="font-size: 10px;">' + field.handle + '</code></td>';
+                    html += '<td colspan="2"><span class="light">Not supported</span></td>';
+                    html += '</tr>';
+                } else {
+                    html += '<tr>';
+                    html += '<td style="vertical-align: middle; white-space: nowrap;">' + field.name + '<br><code style="font-size: 10px;">' + field.handle + '</code></td>';
+                    html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneo]" style="display:none">' + akeneoOptionsHtml + '</select></td>';
+                    html += '<td><input type="text" name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][static]" value="" class="fullwidth text matrix-static-value-input" placeholder="Enter value…" disabled></td>';
+                    html += '</tr>';
+                }
+            });
 
             html += '</tbody></table>';
 
@@ -256,7 +592,14 @@
                 e.target.closest('.table-mapping-row').remove();
             }
         });
-    })();
-    </script>
+
+        // Remove matrix entry row
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('matrix-entry-row-delete')) {
+                e.target.closest('.matrix-entry-row').remove();
+            }
+        });
+    })(jQuery);
+    {% endjs %}
 
 {% endblock %}

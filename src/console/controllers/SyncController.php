@@ -13,36 +13,60 @@ use yii\console\ExitCode;
  */
 class SyncController extends Controller
 {
-    public $defaultAction = 'get-products';
+    public $defaultAction = 'all';
+
+    public ?int $source = null;
 
     public function options($actionID): array
     {
         $options = parent::options($actionID);
-        switch ($actionID) {
-            case 'index':
-                // $options[] = '...';
-                break;
-        }
+        $options[] = 'source';
         return $options;
     }
 
     /**
      * Sync product data and images
      */
-    public function actionGetProducts(): int
+    public function actionAll(): int
     {
-
-        $products = Plugin::getInstance()->sync->getProducts(true);
-        return ExitCode::OK;
-        
+        return $this->runSync(true, true);
     }
 
     /**
      * Sync product data only
      */
-    public function actionGetProductsDataOnly(): int
+    public function actionDataOnly(): int
     {
-        $products = Plugin::getInstance()->sync->getProducts(false);
+        return $this->runSync(false, false);
+    }
+
+    /**
+     * Sync product images only
+     */
+    public function actionImagesOnly(): int
+    {
+        return $this->runSync(false, true);
+    }
+
+    private function runSync(bool $syncData, bool $syncImages): int
+    {
+        if ($this->source === null) {
+            $this->stderr("The --source flag is required. Usage: php craft akeneo/sync --source=1\n");
+            return ExitCode::USAGE;
+        }
+
+        $source = Plugin::getInstance()->sources->getSourceById($this->source);
+
+        if (!$source) {
+            $this->stderr("Source with ID {$this->source} not found.\n");
+            return ExitCode::USAGE;
+        }
+
+        $this->stdout("Syncing source: {$source->name} (ID: {$source->id})\n");
+
+        Plugin::getInstance()->sync->getProducts($syncImages);
+        Plugin::getInstance()->sources->updateLastImportedAt($source->id);
+
         return ExitCode::OK;
     }
 }

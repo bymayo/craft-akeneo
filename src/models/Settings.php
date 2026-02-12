@@ -15,11 +15,13 @@ class Settings extends Model
     public ?string $secretKey = null;
     public ?string $username = null;
     public ?string $password = null;
+    public int $attributeCacheDuration = 21600;
 
     public function defineRules(): array
     {
         return [
             [['apiUrl', 'clientId', 'secretKey', 'username', 'password'], 'required'],
+            ['attributeCacheDuration', 'integer', 'min' => 0],
         ];
     }
 }

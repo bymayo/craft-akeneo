@@ -51,6 +51,17 @@
     required: true,
 }) }}
 
+{{ forms.textField({
+    label: 'Attribute Cache Duration',
+    instructions: 'How long (in seconds) to cache Akeneo attributes. Set to 0 to disable caching.',
+    id: 'attributeCacheDuration',
+    name: 'attributeCacheDuration',
+    value: settings.attributeCacheDuration,
+    type: 'number',
+    min: 0,
+    size: 10,
+}) }}
+
 <hr>
 
 <div class="field">

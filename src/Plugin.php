@@ -4,8 +4,10 @@ namespace bymayo\akeneo;
 
 use Craft;
 use craft\helpers\FileHelper;
+use craft\events\RegisterCacheOptionsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\services\Dashboard;
+use craft\utilities\ClearCaches;
 use craft\web\UrlManager;
 use bymayo\akeneo\models\Settings;
 use bymayo\akeneo\services\Sources;
@@ -23,7 +25,7 @@ use yii\base\Event;
  */
 class Plugin extends BasePlugin
 {
-    public string $schemaVersion = '1.2.0';
+    public string $schemaVersion = '1.4.0';
     public bool $hasCpSettings = true;
     public bool $hasCpSection = true;
 
@@ -52,10 +54,24 @@ class Plugin extends BasePlugin
         });
 
         Event::on(
-            Dashboard::class, 
-            Dashboard::EVENT_REGISTER_WIDGET_TYPES, 
+            Dashboard::class,
+            Dashboard::EVENT_REGISTER_WIDGET_TYPES,
             function (Event $event) {
                 $event->types[] = SyncWidget::class;
+            }
+        );
+
+        Event::on(
+            ClearCaches::class,
+            ClearCaches::EVENT_REGISTER_CACHE_OPTIONS,
+            function (RegisterCacheOptionsEvent $event) {
+                $event->options[] = [
+                    'key' => 'akeneo-attributes',
+                    'label' => 'Akeneo attributes',
+                    'action' => function () {
+                        Craft::$app->getCache()->delete('akeneo_attributes');
+                    },
+                ];
             }
         );
     }

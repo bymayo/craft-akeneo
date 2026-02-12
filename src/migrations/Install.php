@@ -13,6 +13,8 @@ class Install extends Migration
             'name' => $this->string()->notNull(),
             'type' => $this->string()->notNull(),
             'typeId' => $this->integer()->notNull(),
+            'orphanedEntryAction' => $this->string()->notNull()->defaultValue('doNothing'),
+            'lastImportedAt' => $this->dateTime()->null(),
             'dateCreated' => $this->dateTime()->notNull(),
             'dateUpdated' => $this->dateTime()->notNull(),
             'uid' => $this->uid(),

@@ -62,6 +62,7 @@ class Sources extends Component
             $record->name = $source->name;
             $record->type = $source->type;
             $record->typeId = $source->typeId;
+            $record->orphanedEntryAction = $source->orphanedEntryAction;
 
             $record->save(false);
 
@@ -109,7 +110,7 @@ class Sources extends Component
             }
         }
 
-        // Commerce Product Types (if Commerce is installed)
+        // Commerce Products (if Commerce is installed)
         $commercePlugin = Craft::$app->plugins->getPlugin('commerce');
 
         if ($commercePlugin) {
@@ -125,7 +126,7 @@ class Sources extends Component
 
             if (!empty($productTypeOptions)) {
                 $options[] = [
-                    'optgroup' => 'Commerce Product Types',
+                    'optgroup' => 'Commerce Products',
                 ];
 
                 foreach ($productTypeOptions as $option) {
@@ -203,40 +204,130 @@ class Sources extends Component
         return true;
     }
 
+    private const SUPPORTED_FIELD_TYPES = [
+        \craft\fields\PlainText::class,
+        \craft\fields\Number::class,
+        \craft\fields\Email::class,
+        \craft\fields\Url::class,
+        \craft\fields\Dropdown::class,
+        \craft\fields\RadioButtons::class,
+        \craft\fields\Lightswitch::class,
+        \craft\fields\Color::class,
+        \craft\fields\Date::class,
+        \craft\fields\Money::class,
+        \craft\fields\Table::class,
+        \craft\fields\Matrix::class,
+        \craft\fields\Assets::class,
+    ];
+
+    private function isFieldSupported($field): bool
+    {
+        foreach (self::SUPPORTED_FIELD_TYPES as $supportedType) {
+            if ($field instanceof $supportedType) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function getCraftFieldsForSource(Source $source): array
     {
         $fields = [
-            ['handle' => 'title', 'name' => 'Title', 'type' => 'field'],
-            ['handle' => 'slug', 'name' => 'Slug', 'type' => 'field'],
+            ['handle' => 'title', 'name' => 'Title', 'type' => 'field', 'supported' => true, 'fieldType' => 'Title'],
+            ['handle' => 'slug', 'name' => 'Slug', 'type' => 'field', 'supported' => true, 'fieldType' => 'Slug'],
         ];
 
-        $seenHandles = ['title' => true, 'slug' => true];
+        // Collect custom fields from the source's field layouts
+        $sourceCustomFields = [];
 
-        $allCustomFields = Craft::$app->getFields()->getAllFields();
-
-        foreach ($allCustomFields as $field) {
-            if (!isset($seenHandles[$field->handle])) {
-                $fieldData = [
-                    'handle' => $field->handle,
-                    'name' => $field->name,
-                    'type' => 'field',
-                ];
-
-                if ($field instanceof \craft\fields\Table) {
-                    $fieldData['type'] = 'table';
-                    $fieldData['columns'] = [];
-
-                    foreach ($field->columns as $colId => $col) {
-                        $fieldData['columns'][$colId] = [
-                            'heading' => $col['heading'] ?? $colId,
-                            'handle' => $col['handle'] ?? $colId,
-                        ];
+        if ($source->type === 'section') {
+            $section = Craft::$app->getEntries()->getSectionById($source->typeId);
+            if ($section) {
+                foreach ($section->getEntryTypes() as $entryType) {
+                    foreach ($entryType->getFieldLayout()->getCustomFields() as $customField) {
+                        $sourceCustomFields[$customField->handle] = $customField;
                     }
                 }
-
-                $fields[] = $fieldData;
-                $seenHandles[$field->handle] = true;
             }
+        } elseif ($source->type === 'commerceProductType') {
+            $commercePlugin = Craft::$app->plugins->getPlugin('commerce');
+            if ($commercePlugin) {
+                $productType = $commercePlugin->getProductTypes()->getProductTypeById($source->typeId);
+                if ($productType) {
+                    foreach ($productType->getFieldLayout()->getCustomFields() as $customField) {
+                        $sourceCustomFields[$customField->handle] = $customField;
+                    }
+                    if (method_exists($productType, 'getVariantFieldLayout')) {
+                        foreach ($productType->getVariantFieldLayout()->getCustomFields() as $customField) {
+                            $sourceCustomFields[$customField->handle] = $customField;
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach ($sourceCustomFields as $field) {
+            $fieldData = [
+                'handle' => $field->handle,
+                'name' => $field->name,
+                'type' => 'field',
+                'supported' => $this->isFieldSupported($field),
+                'fieldType' => $field::displayName(),
+            ];
+
+            if ($field instanceof \craft\fields\Table) {
+                $fieldData['type'] = 'table';
+                $fieldData['columns'] = [];
+
+                foreach ($field->columns as $colId => $col) {
+                    $fieldData['columns'][$colId] = [
+                        'heading' => $col['heading'] ?? $colId,
+                        'handle' => $col['handle'] ?? $colId,
+                    ];
+                }
+            } elseif ($field instanceof \craft\fields\Assets) {
+                $fieldData['type'] = 'asset';
+            } elseif ($field instanceof \craft\fields\Matrix) {
+                $fieldData['type'] = 'matrix';
+                $fieldData['entryTypes'] = [];
+
+                foreach ($field->getEntryTypes() as $entryType) {
+                    $entryTypeData = [
+                        'handle' => $entryType->handle,
+                        'name' => $entryType->name,
+                        'fields' => [],
+                    ];
+
+                    foreach ($entryType->getFieldLayout()->getCustomFields() as $nestedField) {
+                        $nestedFieldData = [
+                            'handle' => $nestedField->handle,
+                            'name' => $nestedField->name,
+                            'type' => 'field',
+                            'supported' => $this->isFieldSupported($nestedField),
+                            'fieldType' => $nestedField::displayName(),
+                        ];
+
+                        if ($nestedField instanceof \craft\fields\Table) {
+                            $nestedFieldData['type'] = 'table';
+                            $nestedFieldData['columns'] = [];
+                            foreach ($nestedField->columns as $colId => $col) {
+                                $nestedFieldData['columns'][$colId] = [
+                                    'heading' => $col['heading'] ?? $colId,
+                                    'handle' => $col['handle'] ?? $colId,
+                                ];
+                            }
+                        } elseif ($nestedField instanceof \craft\fields\Assets) {
+                            $nestedFieldData['type'] = 'asset';
+                        }
+
+                        $entryTypeData['fields'][] = $nestedFieldData;
+                    }
+
+                    $fieldData['entryTypes'][] = $entryTypeData;
+                }
+            }
+
+            $fields[] = $fieldData;
         }
 
         return $fields;
@@ -244,7 +335,7 @@ class Sources extends Component
 
     public function getAkeneoAttributes(): array
     {
-        $cacheKey = 'akeneo_attributes_v2';
+        $cacheKey = 'akeneo_attributes';
         $cache = Craft::$app->getCache();
 
         $attributes = $cache->get($cacheKey);
@@ -274,9 +365,28 @@ class Sources extends Component
             return strcasecmp($a['label'], $b['label']);
         });
 
-        $cache->set($cacheKey, $attributes, 300);
+        $cacheDuration = Plugin::getInstance()->getSettings()->attributeCacheDuration;
+        $cache->set($cacheKey, $attributes, $cacheDuration);
 
         return $attributes;
+    }
+
+    public function updateLastImportedAt(int $sourceId): void
+    {
+        Craft::$app->getDb()->createCommand()
+            ->update('{{%akeneo_sources}}', [
+                'lastImportedAt' => (new \DateTime())->format('Y-m-d H:i:s'),
+            ], ['id' => $sourceId])
+            ->execute();
+    }
+
+    public function updateAllLastImportedAt(): void
+    {
+        Craft::$app->getDb()->createCommand()
+            ->update('{{%akeneo_sources}}', [
+                'lastImportedAt' => (new \DateTime())->format('Y-m-d H:i:s'),
+            ])
+            ->execute();
     }
 
     private function _createSourceFromRecord(SourceRecord $record): Source
@@ -286,6 +396,8 @@ class Sources extends Component
         $source->name = $record->name;
         $source->type = $record->type;
         $source->typeId = $record->typeId;
+        $source->orphanedEntryAction = $record->orphanedEntryAction;
+        $source->lastImportedAt = $record->lastImportedAt;
         $source->uid = $record->uid;
         $source->dateCreated = $record->dateCreated;
         $source->dateUpdated = $record->dateUpdated;

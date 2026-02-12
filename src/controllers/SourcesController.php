@@ -22,7 +22,7 @@ class SourcesController extends Controller
 
         foreach ($sources as $source) {
             $typeLabel = Plugin::getInstance()->sources->getTypeLabelById($source->type, $source->typeId);
-            $typePrefix = $source->type === 'section' ? 'Section' : 'Commerce Product Type';
+            $typePrefix = $source->type === 'section' ? 'Section' : 'Commerce Product';
 
             $tableData[] = [
                 'id' => $source->id,
@@ -30,6 +30,7 @@ class SourcesController extends Controller
                 'url' => 'akeneo/sources/' . $source->id,
                 'contentType' => $typePrefix,
                 'type' => $typeLabel,
+                'lastImportedAt' => $source->lastImportedAt,
             ];
         }
 
@@ -68,6 +69,7 @@ class SourcesController extends Controller
 
         $request = Craft::$app->getRequest();
         $sourceId = $request->getBodyParam('sourceId');
+        $isNew = empty($sourceId);
 
         if ($sourceId) {
             $source = Plugin::getInstance()->sources->getSourceById($sourceId);
@@ -89,6 +91,8 @@ class SourcesController extends Controller
             $source->typeId = (int) $typeId;
         }
 
+        $source->orphanedEntryAction = $request->getBodyParam('orphanedEntryAction', 'doNothing');
+
         if (!Plugin::getInstance()->sources->saveSource($source)) {
             Craft::$app->getSession()->setError('Couldn\'t save source.');
 
@@ -100,6 +104,10 @@ class SourcesController extends Controller
         }
 
         Craft::$app->getSession()->setNotice('Source saved.');
+
+        if ($isNew) {
+            return $this->redirect('akeneo/sources/' . $source->id . '/field-mapping');
+        }
 
         return $this->redirectToPostedUrl($source);
     }
@@ -166,12 +174,17 @@ class SourcesController extends Controller
                     $rowData = [];
 
                     foreach ($row as $colId => $colData) {
+                        $akeneoVal = $colData['akeneo'] ?? '';
+                        if ($akeneoVal === '__none__') {
+                            $akeneoVal = '';
+                        }
+
                         $rowData[$colId] = [
                             'static' => $colData['static'] ?? '',
-                            'akeneo' => $colData['akeneo'] ?? '',
+                            'akeneo' => $akeneoVal,
                         ];
 
-                        if (!empty($colData['static']) || !empty($colData['akeneo'])) {
+                        if (!empty($colData['static']) || !empty($akeneoVal)) {
                             $hasData = true;
                         }
                     }
@@ -191,6 +204,80 @@ class SourcesController extends Controller
                 continue;
             }
 
+            // Matrix field: encode entry type row mappings as JSON
+            if (!empty($mapping['matrix'])) {
+                $matrixData = [];
+
+                foreach ($mapping['matrix'] as $entryTypeHandle => $entryRows) {
+                    $entryTypeRows = [];
+
+                    foreach ($entryRows as $rowIdx => $fields) {
+                        $rowData = [];
+
+                        foreach ($fields as $fieldHandle => $fieldData) {
+                            if (!empty($fieldData['tableRows'])) {
+                                $tableRows = [];
+
+                                foreach ($fieldData['tableRows'] as $tableRow) {
+                                    $hasData = false;
+                                    $tableRowData = [];
+
+                                    foreach ($tableRow as $colId => $colData) {
+                                        $akeneoVal = $colData['akeneo'] ?? '';
+                                        if ($akeneoVal === '__none__') {
+                                            $akeneoVal = '';
+                                        }
+
+                                        $tableRowData[$colId] = [
+                                            'static' => $colData['static'] ?? '',
+                                            'akeneo' => $akeneoVal,
+                                        ];
+
+                                        if (!empty($colData['static']) || !empty($akeneoVal)) {
+                                            $hasData = true;
+                                        }
+                                    }
+
+                                    if ($hasData) {
+                                        $tableRows[] = $tableRowData;
+                                    }
+                                }
+
+                                if (!empty($tableRows)) {
+                                    $rowData[$fieldHandle] = $tableRows;
+                                }
+                            } else {
+                                $akeneo = $fieldData['akeneo'] ?? '';
+                                $static = $fieldData['static'] ?? '';
+
+                                if ($akeneo === '__static__' && $static !== '') {
+                                    $rowData[$fieldHandle] = 'static:' . $static;
+                                } elseif (!empty($akeneo) && $akeneo !== '__static__' && $akeneo !== '__none__') {
+                                    $rowData[$fieldHandle] = $akeneo;
+                                }
+                            }
+                        }
+
+                        if (!empty($rowData)) {
+                            $entryTypeRows[] = $rowData;
+                        }
+                    }
+
+                    if (!empty($entryTypeRows)) {
+                        $matrixData[$entryTypeHandle] = $entryTypeRows;
+                    }
+                }
+
+                if (!empty($matrixData)) {
+                    $mappings[] = [
+                        'craftFieldHandle' => $handle,
+                        'akeneoAttribute' => json_encode($matrixData),
+                    ];
+                }
+
+                continue;
+            }
+
             // Regular field
             $akeneoAttribute = $mapping['akeneoAttribute'] ?? '';
             $staticValue = $mapping['staticValue'] ?? '';
@@ -200,7 +287,7 @@ class SourcesController extends Controller
                     'craftFieldHandle' => $handle,
                     'akeneoAttribute' => 'static:' . $staticValue,
                 ];
-            } elseif (!empty($akeneoAttribute) && $akeneoAttribute !== '__static__') {
+            } elseif (!empty($akeneoAttribute) && $akeneoAttribute !== '__static__' && $akeneoAttribute !== '__none__') {
                 $mappings[] = [
                     'craftFieldHandle' => $handle,
                     'akeneoAttribute' => $akeneoAttribute,
@@ -213,6 +300,20 @@ class SourcesController extends Controller
         Craft::$app->getSession()->setNotice('Field mappings saved.');
 
         return $this->redirect('akeneo/sources/' . $sourceId . '/field-mapping');
+    }
+
+    public function actionRefreshAkeneoAttributes(): Response
+    {
+        $this->requirePostRequest();
+
+        $request = Craft::$app->getRequest();
+        $sourceId = (int) $request->getRequiredBodyParam('sourceId');
+
+        Craft::$app->getCache()->delete('akeneo_attributes_v2');
+
+        Craft::$app->getSession()->setNotice('Akeneo attributes cache refreshed.');
+
+        return $this->redirect('akeneo/sources/' . $sourceId);
     }
 
     public function actionDelete(): Response

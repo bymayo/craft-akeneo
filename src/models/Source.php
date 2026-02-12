@@ -10,6 +10,8 @@ class Source extends Model
     public ?string $name = null;
     public ?string $type = null;
     public ?int $typeId = null;
+    public string $orphanedEntryAction = 'doNothing';
+    public ?string $lastImportedAt = null;
     public ?string $uid = null;
     public ?string $dateCreated = null;
     public ?string $dateUpdated = null;
@@ -19,6 +21,7 @@ class Source extends Model
         return [
             [['name', 'type', 'typeId'], 'required'],
             ['type', 'in', 'range' => ['section', 'commerceProductType']],
+            ['orphanedEntryAction', 'in', 'range' => ['doNothing', 'disable', 'delete']],
         ];
     }
 }
