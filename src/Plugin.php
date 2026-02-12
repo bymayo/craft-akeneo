@@ -84,11 +84,7 @@ class Plugin extends BasePlugin
     public function getCpNavItem(): ?array
     {
         $item = parent::getCpNavItem();
-
-        $item['subnav'] = [
-            'sources' => ['label' => 'Sources', 'url' => 'akeneo/sources'],
-            'settings' => ['label' => 'Settings', 'url' => 'akeneo/settings'],
-        ];
+        $item['url'] = 'akeneo/sources';
 
         return $item;
     }
