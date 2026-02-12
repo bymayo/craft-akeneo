@@ -15,6 +15,8 @@ class FetchProducts extends BaseJob
 
     public function execute($queue): void
     {
+        $syncStartedAt = (new \DateTime())->format('Y-m-d H:i:s');
+
         $source = Plugin::getInstance()->sources->getSourceById($this->sourceId);
 
         if (!$source) {
@@ -54,6 +56,7 @@ class FetchProducts extends BaseJob
             'sourceId' => $source->id,
             'syncImages' => $this->syncImages,
             'products' => $allProducts,
+            'syncStartedAt' => $syncStartedAt,
         ]));
     }
 

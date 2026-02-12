@@ -6,6 +6,7 @@ use bymayo\akeneo\Plugin;
 
 use Craft;
 use craft\base\Batchable;
+use craft\helpers\Queue;
 use craft\queue\BaseBatchedJob;
 
 class SyncProducts extends BaseBatchedJob
@@ -14,6 +15,7 @@ class SyncProducts extends BaseBatchedJob
     public bool $syncImages = true;
     public array $products = [];
     public int $batchSize = 50;
+    public string $syncStartedAt = '';
 
     protected function loadData(): Batchable
     {
@@ -30,6 +32,24 @@ class SyncProducts extends BaseBatchedJob
         }
 
         Plugin::getInstance()->sync->createEntryFromMappings($source, $item, $this->syncImages);
+    }
+
+    protected function after(): void
+    {
+        $source = Plugin::getInstance()->sources->getSourceById($this->sourceId);
+
+        if (!$source || $source->orphanedEntryAction === 'doNothing') {
+            return;
+        }
+
+        if (empty($this->syncStartedAt)) {
+            return;
+        }
+
+        Queue::push(new HandleOrphanedEntries([
+            'sourceId' => $this->sourceId,
+            'syncStartedAt' => $this->syncStartedAt,
+        ]));
     }
 
     protected function defaultDescription(): ?string

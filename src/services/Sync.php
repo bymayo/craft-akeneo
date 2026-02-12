@@ -132,13 +132,13 @@ class Sync extends Component
         return $value;
     }
 
-    public function createEntryFromMappings(Source $source, array $data, bool $syncImages): bool
+    public function createEntryFromMappings(Source $source, array $data, bool $syncImages): ?int
     {
         $mappings = Plugin::getInstance()->sources->getMappingsBySourceId($source->id);
 
         if (empty($mappings)) {
             Plugin::log("No field mappings found for source '{$source->name}' (ID: {$source->id})");
-            return false;
+            return null;
         }
 
         // Build attribute type lookup: code => type
@@ -171,7 +171,7 @@ class Sync extends Component
 
         if (!$section) {
             Plugin::log("Section with ID {$source->typeId} not found for source '{$source->name}'");
-            return false;
+            return null;
         }
 
         $entry = null;
@@ -276,10 +276,10 @@ class Sync extends Component
             $errors = implode(', ', $entry->getErrorSummary(true));
             Plugin::log("Failed to save entry for source '{$source->name}': {$errors}");
             Craft::error("Failed to save entry for source '{$source->name}': {$errors}", __METHOD__);
-            return false;
+            return null;
         }
 
-        return true;
+        return $entry->id;
     }
 
     private function setEntryFieldValue(Entry $entry, string $handle, mixed $value): void
