@@ -123,6 +123,7 @@ class Plugin extends BasePlugin
                 $event->rules['akeneo/sources/new'] = 'akeneo/sources/edit';
                 $event->rules['akeneo/sources/<sourceId:\d+>'] = 'akeneo/sources/edit';
                 $event->rules['akeneo/sources/<sourceId:\d+>/field-mapping'] = 'akeneo/sources/field-mapping';
+                $event->rules['akeneo/sources/<sourceId:\d+>/console-commands'] = 'akeneo/sources/console-commands';
             }
         );
     }

@@ -134,6 +134,19 @@ class SourcesController extends Controller
         return $this->redirectToPostedUrl($source);
     }
 
+    public function actionConsoleCommands(int $sourceId): Response
+    {
+        $source = Plugin::getInstance()->sources->getSourceById($sourceId);
+
+        if (!$source) {
+            throw new NotFoundHttpException('Source not found');
+        }
+
+        return $this->renderTemplate('akeneo/sources/_console-commands', [
+            'source' => $source,
+        ]);
+    }
+
     public function actionFieldMapping(int $sourceId): Response
     {
         $source = Plugin::getInstance()->sources->getSourceById($sourceId);

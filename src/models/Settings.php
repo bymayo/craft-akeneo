@@ -18,7 +18,6 @@ class Settings extends Model
     public int $attributeCacheDuration = 21600;
     public int $syncPageSize = 75;
     public int $syncMaxPages = 1000;
-    public string $assetVolumeHandle = 'images';
     public string $assetFolderName = 'Akeneo';
 
     public function defineRules(): array
@@ -28,8 +27,8 @@ class Settings extends Model
             ['attributeCacheDuration', 'integer', 'min' => 0],
             ['syncPageSize', 'integer', 'min' => 1, 'max' => 100],
             ['syncMaxPages', 'integer', 'min' => 1],
-            [['assetVolumeHandle', 'assetFolderName'], 'required'],
-            [['assetVolumeHandle', 'assetFolderName'], 'string'],
+            [['assetFolderName'], 'required'],
+            [['assetFolderName'], 'string'],
         ];
     }
 }

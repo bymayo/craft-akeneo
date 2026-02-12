@@ -21,6 +21,5 @@ return [
     'attributeCacheDuration' => 21600,
     'syncPageSize' => 75,
     'syncMaxPages' => 1000,
-    'assetVolumeHandle' => 'images',
     'assetFolderName' => 'Akeneo',
 ];

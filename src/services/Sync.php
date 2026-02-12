@@ -15,9 +15,11 @@ use bymayo\akeneo\models\Source;
 
 use craft\elements\Entry;
 use craft\elements\Asset;
+use craft\fields\Assets as AssetsField;
 use craft\helpers\Assets as AssetsHelper;
 use craft\helpers\Queue;
 use craft\helpers\StringHelper;
+use craft\models\Volume;
 
 /**
  * Auth service
@@ -215,9 +217,10 @@ class Sync extends Component
                     if (!empty($decoded) && is_string($decoded[0])) {
                         // Multi-asset field
                         if ($syncImages) {
+                            $volume = $this->getVolumeForField($handle);
                             $allAssetIds = [];
                             foreach ($decoded as $assetCode) {
-                                $assetIds = $this->resolveAssetField($assetCode, $values);
+                                $assetIds = $this->resolveAssetField($assetCode, $values, $volume);
                                 $allAssetIds = array_merge($allAssetIds, $assetIds);
                             }
                             if (!empty($allAssetIds)) {
@@ -231,7 +234,7 @@ class Sync extends Component
                     }
                 } else {
                     // Matrix field
-                    $matrixData = $this->resolveMatrixMapping($decoded, $values, $attributeTypes, $syncImages, $locale);
+                    $matrixData = $this->resolveMatrixMapping($decoded, $values, $attributeTypes, $syncImages, $locale, $handle);
                     $entry->setFieldValue($handle, $matrixData);
                 }
                 continue;
@@ -249,7 +252,8 @@ class Sync extends Component
 
             if ($attrType === 'pim_catalog_asset_collection') {
                 if ($syncImages) {
-                    $assetIds = $this->resolveAssetField($akeneoAttr, $values);
+                    $volume = $this->getVolumeForField($handle);
+                    $assetIds = $this->resolveAssetField($akeneoAttr, $values, $volume);
                     if (!empty($assetIds)) {
                         $entry->setFieldValue($handle, $assetIds);
                     }
@@ -340,7 +344,7 @@ class Sync extends Component
         return $tableData;
     }
 
-    private function resolveMatrixMapping(array $matrixData, array $values, array $attributeTypes, bool $syncImages, string $locale = 'en_GB'): array
+    private function resolveMatrixMapping(array $matrixData, array $values, array $attributeTypes, bool $syncImages, string $locale = 'en_GB', ?string $matrixFieldHandle = null): array
     {
         $result = [];
         $blockIndex = 0;
@@ -355,9 +359,10 @@ class Sync extends Component
                         if (!empty($fieldValue) && is_string($fieldValue[0] ?? null)) {
                             // Multi-asset field (array of akeneo codes)
                             if ($syncImages) {
+                                $volume = $matrixFieldHandle ? $this->getVolumeForField($fieldHandle, $matrixFieldHandle, $entryTypeHandle) : null;
                                 $allAssetIds = [];
                                 foreach ($fieldValue as $assetCode) {
-                                    $assetIds = $this->resolveAssetField($assetCode, $values);
+                                    $assetIds = $this->resolveAssetField($assetCode, $values, $volume);
                                     $allAssetIds = array_merge($allAssetIds, $assetIds);
                                 }
                                 if (!empty($allAssetIds)) {
@@ -382,7 +387,8 @@ class Sync extends Component
 
                     if ($attrType === 'pim_catalog_asset_collection') {
                         if ($syncImages) {
-                            $assetIds = $this->resolveAssetField($fieldValue, $values);
+                            $volume = $matrixFieldHandle ? $this->getVolumeForField($fieldHandle, $matrixFieldHandle, $entryTypeHandle) : null;
+                            $assetIds = $this->resolveAssetField($fieldValue, $values, $volume);
                             if (!empty($assetIds)) {
                                 $fields[$fieldHandle] = $assetIds;
                             }
@@ -414,7 +420,7 @@ class Sync extends Component
         return $result;
     }
 
-    private function resolveAssetField(string $akeneoCode, array $values): array
+    private function resolveAssetField(string $akeneoCode, array $values, ?Volume $volume = null): array
     {
         $assetIds = [];
 
@@ -456,7 +462,7 @@ class Sync extends Component
                 if ($url) {
                     $filename = basename(parse_url($url, PHP_URL_PATH));
                     $subfolder = $urlKey ? StringHelper::toKebabCase($urlKey) : $akeneoCode;
-                    $asset = $this->createAsset($filename, $url, $subfolder);
+                    $asset = $this->createAsset($filename, $url, $subfolder, $volume);
 
                     if ($asset) {
                         $assetIds[] = $asset->id;
@@ -470,17 +476,56 @@ class Sync extends Component
         return $assetIds;
     }
 
-    public function createAsset($filename, $url, $subfolderName = null)
+    private function getVolumeForField(string $fieldHandle, ?string $matrixFieldHandle = null, ?string $entryTypeHandle = null): ?Volume
+    {
+        $field = null;
+
+        if ($matrixFieldHandle && $entryTypeHandle) {
+            // Nested field inside a matrix
+            $matrixField = Craft::$app->getFields()->getFieldByHandle($matrixFieldHandle);
+            if ($matrixField instanceof \craft\fields\Matrix) {
+                foreach ($matrixField->getEntryTypes() as $entryType) {
+                    if ($entryType->handle === $entryTypeHandle) {
+                        foreach ($entryType->getFieldLayout()->getCustomFields() as $nestedField) {
+                            if ($nestedField->handle === $fieldHandle) {
+                                $field = $nestedField;
+                                break 2;
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            $field = Craft::$app->getFields()->getFieldByHandle($fieldHandle);
+        }
+
+        if (!$field instanceof AssetsField) {
+            return null;
+        }
+
+        $sourceKey = $field->defaultUploadLocationSource;
+
+        if (!$sourceKey) {
+            return null;
+        }
+
+        $parts = explode(':', $sourceKey, 2);
+
+        if (count($parts) !== 2) {
+            return null;
+        }
+
+        return Craft::$app->getVolumes()->getVolumeByUid($parts[1]);
+    }
+
+    public function createAsset($filename, $url, $subfolderName = null, ?Volume $volume = null)
     {
         $settings = Plugin::getInstance()->getSettings();
         $folderName = $settings->assetFolderName;
         $folderSlug = StringHelper::toKebabCase($folderName);
 
-        // Get the volume folder
-        $volume = Craft::$app->volumes->getVolumeByHandle($settings->assetVolumeHandle);
-
         if (!$volume) {
-            Plugin::log("Asset volume '{$settings->assetVolumeHandle}' not found");
+            Plugin::log("No volume provided for asset '{$filename}'. Ensure the Asset field has a default upload location configured.");
             return null;
         }
 

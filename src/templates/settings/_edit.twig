@@ -135,22 +135,6 @@
             errors: settings.getErrors('syncMaxPages'),
         }) }}
 
-        {% set volumeOptions = [] %}
-        {% for volume in craft.app.volumes.getAllVolumes() %}
-            {% set volumeOptions = volumeOptions|merge([{ label: volume.name, value: volume.handle }]) %}
-        {% endfor %}
-
-        {{ forms.selectField({
-            label: 'Asset Volume',
-            instructions: 'The Craft asset volume to store Akeneo images in.',
-            id: 'assetVolumeHandle',
-            name: 'settings[assetVolumeHandle]',
-            value: settings.assetVolumeHandle,
-            options: volumeOptions,
-            required: true,
-            errors: settings.getErrors('assetVolumeHandle'),
-        }) }}
-
         {{ forms.textField({
             label: 'Asset Folder Name',
             instructions: 'The folder name within the volume where Akeneo images are stored.',

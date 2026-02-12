@@ -178,34 +178,4 @@
     })();
     {% endjs %}
 
-    <hr>
-
-    <button type="button" class="btn" id="refresh-akeneo-attributes-btn">Refresh Akeneo Attributes</button>
-
-    <script type="text/javascript">
-    document.getElementById('refresh-akeneo-attributes-btn').addEventListener('click', function() {
-        var form = document.createElement('form');
-        form.method = 'post';
-        form.style.display = 'none';
-
-        var csrfInput = document.createElement('input');
-        csrfInput.name = '{{ craft.app.config.general.csrfTokenName }}';
-        csrfInput.value = '{{ craft.app.request.csrfToken }}';
-        form.appendChild(csrfInput);
-
-        var actionInput = document.createElement('input');
-        actionInput.name = 'action';
-        actionInput.value = 'akeneo/sources/refresh-akeneo-attributes';
-        form.appendChild(actionInput);
-
-        var sourceInput = document.createElement('input');
-        sourceInput.name = 'sourceId';
-        sourceInput.value = '{{ source.id ?? 0 }}';
-        form.appendChild(sourceInput);
-
-        document.body.appendChild(form);
-        form.submit();
-    });
-    </script>
-
 {% endblock %}
