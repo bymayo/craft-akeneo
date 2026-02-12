@@ -362,6 +362,7 @@ class SourcesController extends Controller
         $sourceId = (int) $request->getRequiredBodyParam('sourceId');
 
         Craft::$app->getCache()->delete('akeneo_attributes_v2');
+        Craft::$app->getCache()->delete('akeneo_locales');
 
         Craft::$app->getSession()->setNotice('Akeneo attributes cache refreshed.');
 

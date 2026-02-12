@@ -314,7 +314,7 @@ class Sync extends Component
         );
     }
 
-    private function resolveTableRows(array $rows, array $values, array $attributeTypes): array
+    private function resolveTableRows(array $rows, array $values, array $attributeTypes, string $locale = 'en_GB'): array
     {
         $tableData = [];
 
@@ -328,7 +328,7 @@ class Sync extends Component
                 if (!empty($static)) {
                     $rowData[$colId] = $static;
                 } elseif (!empty($akeneo)) {
-                    $resolved = $this->resolveMappingValue($akeneo, $values, $attributeTypes);
+                    $resolved = $this->resolveMappingValue($akeneo, $values, $attributeTypes, $locale);
                     $rowData[$colId] = $resolved !== null ? (string) $resolved : '';
                 } else {
                     $rowData[$colId] = '';
@@ -352,7 +352,7 @@ class Sync extends Component
         return $tableData;
     }
 
-    private function resolveMatrixMapping(array $matrixData, array $values, array $attributeTypes, bool $syncImages): array
+    private function resolveMatrixMapping(array $matrixData, array $values, array $attributeTypes, bool $syncImages, string $locale = 'en_GB'): array
     {
         $result = [];
         $blockIndex = 0;
@@ -364,7 +364,7 @@ class Sync extends Component
                 foreach ($row as $fieldHandle => $fieldValue) {
                     // Nested table field (value is an array of table rows)
                     if (is_array($fieldValue)) {
-                        $fields[$fieldHandle] = $this->resolveTableRows($fieldValue, $values, $attributeTypes);
+                        $fields[$fieldHandle] = $this->resolveTableRows($fieldValue, $values, $attributeTypes, $locale);
                         continue;
                     }
 
@@ -389,7 +389,7 @@ class Sync extends Component
 
                     // Regular Akeneo attribute
                     $resolved = Plugin::getInstance()->attributes->resolveValue(
-                        $fieldValue, $attrType, $values, $this->client
+                        $fieldValue, $attrType, $values, $this->client, $locale
                     );
 
                     if ($resolved !== null) {
@@ -553,90 +553,6 @@ class Sync extends Component
         }
 
         return $asset;
-
-    }
-
-    public function getCollection($title)
-    {
-
-        if ($title)
-        {
-
-            $collectionEntry = Entry::find()
-                ->section('collection')
-                ->title($title)
-                ->status(['live', 'pending', 'expired', 'disabled'])
-                ->one();
-
-            if (!$collectionEntry) {
-
-                $collectionEntry = new Entry();
-                $collectionEntry->sectionId = Craft::$app->entries->getSectionByHandle('collection')->id;
-                $collectionEntry->title = $title;
-                $collectionEntry->slug = StringHelper::toKebabCase($title);
-                $collectionEntry->enabled = false; 
-
-                if (!Craft::$app->elements->saveElement($collectionEntry)) {
-                    Craft::error('Failed to save the collection entry: ' . implode(', ', $collectionEntry->getErrorSummary(true)), __METHOD__);
-                    return null;
-                }
-
-            }
-
-            if ($collectionEntry) {
-                return $collectionEntry->id;
-            }
-
-        }
-
-        return null;
-
-    }
-
-    public function getCategory($title, $group, $parent = null, $enabled = true)
-    {
-
-        if ($title)
-        {
-
-            $groupId = Craft::$app->categories->getGroupByHandle($group)->id;
-            $slug = StringHelper::toKebabCase($title);
-
-            $parentCategory = $parent ? $this->getCategory($parent, $group) : null;
-
-            $category = Category::find()
-                ->groupId($groupId)
-                ->title($title)
-                ->status(null)
-                ->descendantOf($parentCategory ? $parentCategory : null)
-                ->one();
-
-            if (!$category) {
-
-                $category = new Category();
-                $category->groupId = $groupId;
-                $category->title = $title;
-                $category->slug = $slug;
-                $category->enabled = $enabled;
-
-                if ($parentCategory) {
-                    $category->parentId = $parentCategory;
-                }
-
-                if (!Craft::$app->elements->saveElement($category)) {
-                    Craft::error('Failed to save the category entry: ' . implode(', ', $category->getErrorSummary(true)), __METHOD__);
-                    return null;
-                }
-
-            }
-
-            if ($category) {
-                return $category->id;
-            }
-
-        }
-
-        return null;
 
     }
 

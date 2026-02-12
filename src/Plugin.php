@@ -73,6 +73,7 @@ class Plugin extends BasePlugin
                     'label' => 'Akeneo attributes',
                     'action' => function () {
                         Craft::$app->getCache()->delete('akeneo_attributes');
+                        Craft::$app->getCache()->delete('akeneo_locales');
                     },
                 ];
             }
