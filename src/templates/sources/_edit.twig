@@ -68,6 +68,101 @@
         errors: source.getErrors('orphanedEntryAction'),
     }) }}
 
+    {% if source.id and identifierOptions is defined and identifierOptions|length %}
+        {{ forms.selectField({
+            label: 'Entry Identifier'|t('akeneo'),
+            instructions: 'The Craft field used to match existing entries during sync. This field should contain a unique value per entry (e.g. SKU or product code).'|t('akeneo'),
+            id: 'entryIdentifier',
+            name: 'entryIdentifier',
+            value: source.entryIdentifier ?? '',
+            options: [{ label: 'Select…', value: '' }]|merge(identifierOptions),
+            required: true,
+        }) }}
+    {% endif %}
+
+    {% if localeOptions is defined and localeOptions|length %}
+        {{ forms.selectField({
+            label: 'Akeneo Locale'|t('akeneo'),
+            instructions: 'The Akeneo locale to use when pulling attribute values for this source (e.g. en_GB, en_US).'|t('akeneo'),
+            id: 'akeneoLocale',
+            name: 'akeneoLocale',
+            value: source.akeneoLocale ?? '',
+            options: [{ label: 'Select…', value: '' }]|merge(localeOptions),
+            required: true,
+        }) }}
+    {% elseif localeError is defined and localeError %}
+        <div class="field">
+            <div class="heading">
+                <label>{{ 'Akeneo Locale'|t('akeneo') }}</label>
+            </div>
+            <p class="error">{{ 'Could not load Akeneo locales: '|t('akeneo') ~ localeError }}</p>
+        </div>
+    {% endif %}
+
+    <hr>
+
+    {% set existingFilters = source.filters ? source.filters|json_decode : [] %}
+
+    <div class="field">
+        <div class="heading">
+            <label>{{ 'Product Filters'|t('akeneo') }}</label>
+            <div class="instructions"><p>{{ 'Filter which Akeneo products are imported during sync. Leave empty to import all products.'|t('akeneo') }}</p></div>
+        </div>
+        <div class="input">
+            <div id="filters-container">
+                {% for filter in existingFilters %}
+                    <div class="filter-row" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                        <input type="text" name="filters[{{ loop.index0 }}][attribute]" value="{{ filter.attribute }}" class="text" placeholder="Attribute code" style="flex: 2;">
+                        <div style="flex: 1;">
+                            <select name="filters[{{ loop.index0 }}][operator]" class="text">
+                                {% for op in ['=', '!=', '<', '>', '<=', '>=', 'IN', 'NOT IN', 'CONTAINS', 'DOES NOT CONTAIN', 'STARTS WITH', 'EMPTY', 'NOT EMPTY', 'BETWEEN', 'NOT BETWEEN'] %}
+                                    <option value="{{ op }}" {{ filter.operator == op ? 'selected' }}>{{ op }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <input type="text" name="filters[{{ loop.index0 }}][value]" value="{{ filter.value }}" class="text" placeholder="Value" style="flex: 2;">
+                        <a class="delete icon filter-row-delete" title="Remove"></a>
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="button" class="btn small add icon" id="add-filter-btn">{{ 'Add filter'|t('akeneo') }}</button>
+        </div>
+    </div>
+
+    {% js %}
+    (function() {
+        var container = document.getElementById('filters-container');
+        var addBtn = document.getElementById('add-filter-btn');
+
+        var operators = {{ ['=', '!=', '<', '>', '<=', '>=', 'IN', 'NOT IN', 'CONTAINS', 'DOES NOT CONTAIN', 'STARTS WITH', 'EMPTY', 'NOT EMPTY', 'BETWEEN', 'NOT BETWEEN']|json_encode|raw }};
+
+        addBtn.addEventListener('click', function() {
+            var idx = container.querySelectorAll('.filter-row').length;
+            var div = document.createElement('div');
+            div.className = 'filter-row';
+            div.style.cssText = 'display: flex; gap: 8px; align-items: center; margin-bottom: 8px;';
+
+            var optionsHtml = '';
+            operators.forEach(function(op) {
+                optionsHtml += '<option value="' + op + '">' + op + '</option>';
+            });
+
+            div.innerHTML = '<input type="text" name="filters[' + idx + '][attribute]" value="" class="text" placeholder="Attribute code" style="flex: 2;">'
+                + '<div style="flex: 1;"><select name="filters[' + idx + '][operator]" class="text">' + optionsHtml + '</select></div>'
+                + '<input type="text" name="filters[' + idx + '][value]" value="" class="text" placeholder="Value" style="flex: 2;">'
+                + '<a class="delete icon filter-row-delete" title="Remove"></a>';
+
+            container.appendChild(div);
+        });
+
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('filter-row-delete')) {
+                e.target.closest('.filter-row').remove();
+            }
+        });
+    })();
+    {% endjs %}
+
     {% if source.id %}
         <hr>
 

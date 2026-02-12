@@ -56,10 +56,41 @@ class SourcesController extends Controller
 
         $typeOptions = Plugin::getInstance()->sources->getTypeOptions();
 
+        $identifierOptions = [];
+        if ($source->id && $source->type && $source->typeId) {
+            $craftFields = Plugin::getInstance()->sources->getCraftFieldsForSource($source);
+            foreach ($craftFields as $field) {
+                if ($field['type'] === 'field' && $field['supported']) {
+                    $identifierOptions[] = [
+                        'label' => $field['name'],
+                        'value' => $field['handle'],
+                    ];
+                }
+            }
+        }
+
+        $localeOptions = [];
+        $localeError = null;
+
+        try {
+            $akeneoLocales = Plugin::getInstance()->sources->getAkeneoLocales();
+            foreach ($akeneoLocales as $locale) {
+                $localeOptions[] = [
+                    'label' => $locale['label'],
+                    'value' => $locale['code'],
+                ];
+            }
+        } catch (\Throwable $e) {
+            $localeError = $e->getMessage();
+        }
+
         return $this->renderTemplate('akeneo/sources/_edit', [
             'source' => $source,
             'title' => $title,
             'typeOptions' => $typeOptions,
+            'identifierOptions' => $identifierOptions,
+            'localeOptions' => $localeOptions,
+            'localeError' => $localeError,
         ]);
     }
 
@@ -92,6 +123,27 @@ class SourcesController extends Controller
         }
 
         $source->orphanedEntryAction = $request->getBodyParam('orphanedEntryAction', 'doNothing');
+        $source->entryIdentifier = $request->getBodyParam('entryIdentifier') ?: null;
+        $source->akeneoLocale = $request->getBodyParam('akeneoLocale') ?: null;
+
+        // Build filters JSON from repeatable rows
+        $rawFilters = $request->getBodyParam('filters', []);
+        $filters = [];
+
+        foreach ($rawFilters as $filter) {
+            $attribute = trim($filter['attribute'] ?? '');
+            $operator = trim($filter['operator'] ?? '');
+
+            if ($attribute !== '' && $operator !== '') {
+                $filters[] = [
+                    'attribute' => $attribute,
+                    'operator' => $operator,
+                    'value' => trim($filter['value'] ?? ''),
+                ];
+            }
+        }
+
+        $source->filters = !empty($filters) ? json_encode($filters) : null;
 
         if (!Plugin::getInstance()->sources->saveSource($source)) {
             Craft::$app->getSession()->setError('Couldn\'t save source.');

@@ -10,6 +10,7 @@ use craft\services\Dashboard;
 use craft\utilities\ClearCaches;
 use craft\web\UrlManager;
 use bymayo\akeneo\models\Settings;
+use bymayo\akeneo\services\Attributes;
 use bymayo\akeneo\services\Sources;
 use bymayo\akeneo\services\Sync;
 use bymayo\akeneo\widgets\SyncWidget;
@@ -21,11 +22,12 @@ use yii\base\Event;
  *
  * @method static Plugin getInstance()
  * @method Settings getSettings()
+ * @property Attributes $attributes
  * @property Sources $sources
  */
 class Plugin extends BasePlugin
 {
-    public string $schemaVersion = '1.4.0';
+    public string $schemaVersion = '1.7.0';
     public bool $hasCpSettings = true;
     public bool $hasCpSection = true;
 
@@ -41,6 +43,7 @@ class Plugin extends BasePlugin
         parent::init();
 
         $this->setComponents([
+            'attributes' => Attributes::class,
             'sync' => Sync::class,
             'sources' => Sources::class,
         ]);

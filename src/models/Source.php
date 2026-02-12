@@ -11,6 +11,9 @@ class Source extends Model
     public ?string $type = null;
     public ?int $typeId = null;
     public string $orphanedEntryAction = 'doNothing';
+    public ?string $entryIdentifier = null;
+    public ?string $akeneoLocale = null;
+    public ?string $filters = null;
     public ?string $lastImportedAt = null;
     public ?string $uid = null;
     public ?string $dateCreated = null;

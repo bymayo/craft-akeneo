@@ -63,6 +63,9 @@ class Sources extends Component
             $record->type = $source->type;
             $record->typeId = $source->typeId;
             $record->orphanedEntryAction = $source->orphanedEntryAction;
+            $record->entryIdentifier = $source->entryIdentifier;
+            $record->akeneoLocale = $source->akeneoLocale;
+            $record->filters = $source->filters;
 
             $record->save(false);
 
@@ -371,6 +374,41 @@ class Sources extends Component
         return $attributes;
     }
 
+    public function getAkeneoLocales(): array
+    {
+        $cacheKey = 'akeneo_locales';
+        $cache = Craft::$app->getCache();
+
+        $locales = $cache->get($cacheKey);
+
+        if ($locales !== false) {
+            return $locales;
+        }
+
+        $client = Plugin::getInstance()->sync->getClient();
+        $locales = [];
+
+        foreach ($client->getLocaleApi()->all() as $locale) {
+            if (!($locale['enabled'] ?? false)) {
+                continue;
+            }
+
+            $locales[] = [
+                'code' => $locale['code'],
+                'label' => $locale['code'],
+            ];
+        }
+
+        usort($locales, function ($a, $b) {
+            return strcasecmp($a['label'], $b['label']);
+        });
+
+        $cacheDuration = Plugin::getInstance()->getSettings()->attributeCacheDuration;
+        $cache->set($cacheKey, $locales, $cacheDuration);
+
+        return $locales;
+    }
+
     public function updateLastImportedAt(int $sourceId): void
     {
         Craft::$app->getDb()->createCommand()
@@ -397,6 +435,9 @@ class Sources extends Component
         $source->type = $record->type;
         $source->typeId = $record->typeId;
         $source->orphanedEntryAction = $record->orphanedEntryAction;
+        $source->entryIdentifier = $record->entryIdentifier;
+        $source->akeneoLocale = $record->akeneoLocale;
+        $source->filters = $record->filters;
         $source->lastImportedAt = $record->lastImportedAt;
         $source->uid = $record->uid;
         $source->dateCreated = $record->dateCreated;

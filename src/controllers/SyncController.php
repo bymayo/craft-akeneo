@@ -64,11 +64,13 @@ class SyncController extends Controller
 
         $sync = Plugin::getInstance()->sync;
 
-        match ($type) {
-            'data' => $sync->getProducts(false),
-            'images', 'all' => $sync->getProducts(true),
+        $syncImages = match ($type) {
+            'data' => false,
+            'images', 'all' => true,
             default => throw new BadRequestHttpException('Invalid sync type'),
         };
+
+        $sync->syncBySource($source, $syncImages);
 
         Plugin::getInstance()->sources->updateLastImportedAt($sourceId);
 

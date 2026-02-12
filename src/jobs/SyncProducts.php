@@ -6,7 +6,6 @@ use bymayo\akeneo\Plugin;
 
 use Craft;
 use craft\queue\BaseJob;
-use craft\elements\Entry;
 
 /**
  * Sync Products queue job
@@ -15,26 +14,27 @@ class SyncProducts extends BaseJob
 {
 
     public $products;
-    public $categories;
     public $batch;
     public $syncImages;
+    public int $sourceId;
 
     function execute($queue): void
     {
-
         $totalProducts = count($this->products);
+        $source = Plugin::getInstance()->sources->getSourceById($this->sourceId);
+
+        if (!$source) {
+            Plugin::log("Source with ID {$this->sourceId} not found in queue job");
+            return;
+        }
 
         foreach ($this->products as $index => $product) {
+            Plugin::getInstance()->sync->createEntryFromMappings($source, $product, $this->syncImages);
 
-            Plugin::getInstance()->sync->createProductEntry($product, $this->categories, $this->syncImages);
-
-            $progress = ($index + 1) / $totalProducts;
-
-            $this->setProgress($queue, $progress, Craft::t('app', '{step} out of {total}', [
+            $this->setProgress($queue, ($index + 1) / $totalProducts, Craft::t('app', '{step} out of {total}', [
                 'step' => $index + 1,
-                'total' => $totalProducts
+                'total' => $totalProducts,
             ]));
-
         }
 
     }

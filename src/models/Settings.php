@@ -16,12 +16,16 @@ class Settings extends Model
     public ?string $username = null;
     public ?string $password = null;
     public int $attributeCacheDuration = 21600;
+    public int $syncPageSize = 75;
+    public int $syncMaxPages = 1000;
 
     public function defineRules(): array
     {
         return [
             [['apiUrl', 'clientId', 'secretKey', 'username', 'password'], 'required'],
             ['attributeCacheDuration', 'integer', 'min' => 0],
+            ['syncPageSize', 'integer', 'min' => 1, 'max' => 100],
+            ['syncMaxPages', 'integer', 'min' => 1],
         ];
     }
 }
