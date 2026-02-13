@@ -127,7 +127,7 @@ class SourcesController extends Controller
         $source->filters = !empty($filters) ? json_encode($filters) : null;
 
         if (!Plugin::getInstance()->sources->saveSource($source)) {
-            Craft::$app->getSession()->setError('Couldn\'t save source.');
+            Craft::$app->getSession()->setError('Couldn\'t save source: ' . implode(', ', $source->getErrorSummary(true)));
 
             Craft::$app->getUrlManager()->setRouteParams(
                 $this->_editTemplateParams($source)

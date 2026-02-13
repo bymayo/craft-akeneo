@@ -24,6 +24,7 @@ class Source extends Model
     {
         return [
             [['name', 'type', 'typeId'], 'required'],
+            [['entryIdentifier', 'akeneoLocale'], 'required', 'when' => fn($model) => $model->id !== null],
             ['type', 'in', 'range' => ['section', 'commerceProductType']],
             ['orphanedEntryAction', 'in', 'range' => ['doNothing', 'disable', 'delete']],
         ];
