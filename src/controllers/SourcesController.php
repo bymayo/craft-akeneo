@@ -406,7 +406,7 @@ class SourcesController extends Controller
             $identifierOptions = [];
 
             foreach ($craftFields as $field) {
-                if (in_array($field['type'], ['field']) && $field['supported']) {
+                if (in_array($field['type'], ['field']) && $field['supported'] && !in_array($field['handle'], ['variantTitle', 'sku', 'price'])) {
                     $identifierOptions[] = [
                         'label' => $field['name'],
                         'value' => $field['handle'],

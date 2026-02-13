@@ -28,40 +28,59 @@ class HandleOrphanedEntries extends BaseJob
 
         $siteId = $source->siteId ?: Craft::$app->getSites()->getPrimarySite()->id;
 
-        // Find entries in this section that were NOT updated during the sync
-        $orphanedEntries = Entry::find()
-            ->sectionId($source->typeId)
-            ->siteId($siteId)
-            ->status(['live', 'pending', 'expired', 'disabled'])
-            ->dateUpdated('< ' . $this->syncStartedAt)
-            ->limit(null)
-            ->all();
+        // Find elements in this source that were NOT updated during the sync
+        $orphanedElements = [];
 
-        if (empty($orphanedEntries)) {
-            Plugin::log("No orphaned entries found for source '{$source->name}'");
+        if ($source->type === 'section') {
+            $orphanedElements = Entry::find()
+                ->sectionId($source->typeId)
+                ->siteId($siteId)
+                ->status(['live', 'pending', 'expired', 'disabled'])
+                ->dateUpdated('< ' . $this->syncStartedAt)
+                ->limit(null)
+                ->all();
+        } elseif ($source->type === 'commerceProductType') {
+            $commercePlugin = Craft::$app->plugins->getPlugin('commerce');
+
+            if ($commercePlugin) {
+                $orphanedElements = \craft\commerce\elements\Product::find()
+                    ->typeId($source->typeId)
+                    ->siteId($siteId)
+                    ->status(null)
+                    ->dateUpdated('< ' . $this->syncStartedAt)
+                    ->limit(null)
+                    ->all();
+            } else {
+                Plugin::log("Commerce plugin is not installed. Cannot handle orphaned products for source '{$source->name}'.");
+                return;
+            }
+        }
+
+        if (empty($orphanedElements)) {
+            Plugin::log("No orphaned elements found for source '{$source->name}'");
             return;
         }
 
-        $count = count($orphanedEntries);
-        Plugin::log("Found {$count} orphaned entries for source '{$source->name}', action: {$source->orphanedEntryAction}");
+        $count = count($orphanedElements);
+        Plugin::log("Found {$count} orphaned elements for source '{$source->name}', action: {$source->orphanedEntryAction}");
 
-        foreach ($orphanedEntries as $i => $entry) {
+        foreach ($orphanedElements as $i => $element) {
             $this->setProgress($queue, $i / $count);
 
             if ($source->orphanedEntryAction === 'disable') {
-                $entry->enabled = false;
+                $element->enabled = false;
 
-                if (!Craft::$app->elements->saveElement($entry)) {
-                    Plugin::log("Failed to disable orphaned entry ID {$entry->id}");
+                if (!Craft::$app->elements->saveElement($element)) {
+                    Plugin::log("Failed to disable orphaned element ID {$element->id}");
                 }
             } elseif ($source->orphanedEntryAction === 'delete') {
-                if (!Craft::$app->elements->deleteElement($entry)) {
-                    Plugin::log("Failed to delete orphaned entry ID {$entry->id}");
+                if (!Craft::$app->elements->deleteElement($element)) {
+                    Plugin::log("Failed to delete orphaned element ID {$element->id}");
                 }
             }
         }
 
-        Plugin::log("Processed {$count} orphaned entries for source '{$source->name}'");
+        Plugin::log("Processed {$count} orphaned elements for source '{$source->name}'");
     }
 
     protected function defaultDescription(): ?string

@@ -13,6 +13,7 @@ use Akeneo\Pim\ApiClient\Search\SearchBuilder;
 use bymayo\akeneo\jobs\FetchProducts;
 use bymayo\akeneo\models\Source;
 
+use craft\base\Element;
 use craft\elements\Entry;
 use craft\elements\Asset;
 use craft\elements\Category;
@@ -169,42 +170,79 @@ class Sync extends Component
             }
         }
 
-        // Query existing entry or create new
-        $section = Craft::$app->getEntries()->getSectionById($source->typeId);
+        // Query existing element or create new
+        $element = null;
+        $siteId = $source->siteId ?: Craft::$app->getSites()->getPrimarySite()->id;
 
-        if (!$section) {
-            Plugin::log("Section with ID {$source->typeId} not found for source '{$source->name}'");
+        if ($source->type === 'section') {
+            $section = Craft::$app->getEntries()->getSectionById($source->typeId);
+
+            if (!$section) {
+                Plugin::log("Section with ID {$source->typeId} not found for source '{$source->name}'");
+                return null;
+            }
+
+            if ($identifierValue && $identifierHandle) {
+                $query = Entry::find()
+                    ->sectionId($section->id)
+                    ->siteId($siteId)
+                    ->status(['live', 'pending', 'expired', 'disabled']);
+
+                if ($identifierHandle === 'title') {
+                    $query->title($identifierValue);
+                } elseif ($identifierHandle === 'slug') {
+                    $query->slug($identifierValue);
+                } else {
+                    $query->{$identifierHandle}($identifierValue);
+                }
+
+                $element = $query->one();
+            }
+
+            if (!$element) {
+                $element = new Entry();
+                $element->sectionId = $section->id;
+                $element->siteId = $siteId;
+            }
+        } elseif ($source->type === 'commerceProductType') {
+            $commercePlugin = Craft::$app->plugins->getPlugin('commerce');
+
+            if (!$commercePlugin) {
+                Plugin::log("Commerce plugin is not installed. Cannot sync source '{$source->name}' with type 'commerceProductType'.");
+                return null;
+            }
+
+            if ($identifierValue && $identifierHandle) {
+                $query = \craft\commerce\elements\Product::find()
+                    ->typeId($source->typeId)
+                    ->siteId($siteId)
+                    ->status(null);
+
+                if ($identifierHandle === 'title') {
+                    $query->title($identifierValue);
+                } elseif ($identifierHandle === 'slug') {
+                    $query->slug($identifierValue);
+                } else {
+                    $query->{$identifierHandle}($identifierValue);
+                }
+
+                $element = $query->one();
+            }
+
+            if (!$element) {
+                $element = new \craft\commerce\elements\Product();
+                $element->typeId = $source->typeId;
+                $element->siteId = $siteId;
+            }
+        } else {
+            Plugin::log("Unsupported source type '{$source->type}' for source '{$source->name}'");
             return null;
         }
 
-        $entry = null;
+        $element->enabled = true;
 
-        $siteId = $source->siteId ?: Craft::$app->getSites()->getPrimarySite()->id;
-
-        if ($identifierValue && $identifierHandle) {
-            $query = Entry::find()
-                ->sectionId($section->id)
-                ->siteId($siteId)
-                ->status(['live', 'pending', 'expired', 'disabled']);
-
-            if ($identifierHandle === 'title') {
-                $query->title($identifierValue);
-            } elseif ($identifierHandle === 'slug') {
-                $query->slug($identifierValue);
-            } else {
-                $query->{$identifierHandle}($identifierValue);
-            }
-
-            $entry = $query->one();
-        }
-
-        if (!$entry) {
-            $entry = new Entry();
-            $entry->sectionId = $section->id;
-            $entry->siteId = $siteId;
-        }
-
-        $entry->enabled = true;
+        // Collect variant-specific data (SKU/Price) separately for Commerce products
+        $variantData = [];
 
         // Apply each field mapping
         foreach ($mappings as $mapping) {
@@ -234,7 +272,7 @@ class Sync extends Component
                                 }
                             }
                             if (!empty($allIds)) {
-                                $entry->setFieldValue($handle, $allIds);
+                                $element->setFieldValue($handle, $allIds);
                             }
                         } elseif ($craftField instanceof CategoriesField) {
                             // Multi-categories: resolve each attribute and look up categories
@@ -250,7 +288,7 @@ class Sync extends Component
                                 }
                             }
                             if (!empty($allIds)) {
-                                $entry->setFieldValue($handle, $allIds);
+                                $element->setFieldValue($handle, $allIds);
                             }
                         } else {
                             // Multi-asset field
@@ -262,19 +300,19 @@ class Sync extends Component
                                     $allAssetIds = array_merge($allAssetIds, $assetIds);
                                 }
                                 if (!empty($allAssetIds)) {
-                                    $entry->setFieldValue($handle, $allAssetIds);
+                                    $element->setFieldValue($handle, $allAssetIds);
                                 }
                             }
                         }
                     } else {
                         // Table field
                         $tableData = $this->resolveTableRows($decoded, $values, $attributeTypes, $locale);
-                        $entry->setFieldValue($handle, $tableData);
+                        $element->setFieldValue($handle, $tableData);
                     }
                 } else {
                     // Matrix field
                     $matrixData = $this->resolveMatrixMapping($decoded, $values, $attributeTypes, $syncImages, $locale, $handle);
-                    $entry->setFieldValue($handle, $matrixData);
+                    $element->setFieldValue($handle, $matrixData);
                 }
                 continue;
             }
@@ -282,7 +320,13 @@ class Sync extends Component
             // Static value
             if (str_starts_with($akeneoAttr, 'static:')) {
                 $value = substr($akeneoAttr, 7);
-                $this->setEntryFieldValue($entry, $handle, $value);
+
+                if (in_array($handle, ['variantTitle', 'sku', 'price']) && $source->type === 'commerceProductType') {
+                    $variantData[$handle] = $value;
+                    continue;
+                }
+
+                $this->setElementFieldValue($element, $handle, $value);
                 continue;
             }
 
@@ -294,7 +338,7 @@ class Sync extends Component
                     $volume = $this->getVolumeForField($handle);
                     $assetIds = $this->resolveAssetField($akeneoAttr, $values, $volume);
                     if (!empty($assetIds)) {
-                        $entry->setFieldValue($handle, $assetIds);
+                        $element->setFieldValue($handle, $assetIds);
                     }
                 }
                 continue;
@@ -306,27 +350,38 @@ class Sync extends Component
             );
 
             if ($value !== null) {
-                $this->setEntryFieldValue($entry, $handle, $value);
+                if (in_array($handle, ['variantTitle', 'sku', 'price']) && $source->type === 'commerceProductType') {
+                    $variantData[$handle] = $value;
+                    continue;
+                }
+
+                $this->setElementFieldValue($element, $handle, $value);
             }
         }
 
         // Save
-        if (!Craft::$app->elements->saveElement($entry)) {
-            $errors = implode(', ', $entry->getErrorSummary(true));
-            Plugin::log("Failed to save entry for source '{$source->name}': {$errors}");
-            Craft::error("Failed to save entry for source '{$source->name}': {$errors}", __METHOD__);
+        if (!Craft::$app->elements->saveElement($element)) {
+            $errors = implode(', ', $element->getErrorSummary(true));
+            Plugin::log("Failed to save element for source '{$source->name}': {$errors}");
+            Craft::error("Failed to save element for source '{$source->name}': {$errors}", __METHOD__);
             return null;
         }
 
-        return $entry->id;
+        // For Commerce Products, create/update the default variant after saving
+        if ($source->type === 'commerceProductType' && $element instanceof \craft\commerce\elements\Product) {
+            Plugin::log("Syncing default variant for product ID {$element->id} with data: " . json_encode($variantData));
+            $this->syncDefaultVariant($element, $variantData);
+        }
+
+        return $element->id;
     }
 
-    private function setEntryFieldValue(Entry $entry, string $handle, mixed $value): void
+    private function setElementFieldValue(Element $element, string $handle, mixed $value): void
     {
         if ($handle === 'title') {
-            $entry->title = $value;
+            $element->title = $value;
         } elseif ($handle === 'slug') {
-            $entry->slug = $value;
+            $element->slug = $value;
         } else {
             $field = Craft::$app->getFields()->getFieldByHandle($handle);
 
@@ -336,7 +391,7 @@ class Sync extends Component
                 $value = $this->resolveCategoriesFieldValue($field, $value);
             }
 
-            $entry->setFieldValue($handle, $value);
+            $element->setFieldValue($handle, $value);
         }
     }
 
@@ -743,6 +798,72 @@ class Sync extends Component
         }
 
         return null;
+    }
+
+    private function syncDefaultVariant(\craft\commerce\elements\Product $product, array $variantData = []): void
+    {
+        $variants = $product->getVariants();
+        $variant = null;
+
+        // Find existing default variant
+        foreach ($variants as $v) {
+            if ($v->isDefault) {
+                $variant = $v;
+                break;
+            }
+        }
+
+        // Create new variant if none exists
+        if (!$variant) {
+            $variant = new \craft\commerce\elements\Variant();
+            $variant->productId = $product->id;
+            $variant->isDefault = true;
+        }
+
+        // Set Variant Title: mapped value → existing → fallback from product title
+        if (isset($variantData['variantTitle'])) {
+            $variant->title = (string) $variantData['variantTitle'];
+        } elseif (!$variant->title) {
+            $variant->title = $product->title ?? 'Default';
+        }
+
+        // Set SKU: mapped value → existing → fallback from product slug/title
+        if (isset($variantData['sku'])) {
+            $variant->sku = (string) $variantData['sku'];
+        } elseif (!$variant->sku) {
+            $variant->sku = $product->slug ?: StringHelper::toKebabCase($product->title ?? 'default');
+        }
+
+        // Set Price: mapped value → existing → 0
+        $price = isset($variantData['price']) ? $this->resolvePrice($variantData['price']) : null;
+
+        if ($price !== null) {
+            $variant->basePrice = $price;
+        } elseif (!$variant->basePrice) {
+            $variant->basePrice = 0;
+        }
+
+        Plugin::log("Saving variant: sku={$variant->sku}, basePrice={$variant->basePrice}, productId={$variant->productId}, isDefault=" . ($variant->isDefault ? 'true' : 'false'));
+
+        if (!Craft::$app->elements->saveElement($variant)) {
+            $errors = implode(', ', $variant->getErrorSummary(true));
+            Plugin::log("Failed to save default variant for product ID {$product->id}: {$errors}");
+        } else {
+            Plugin::log("Successfully saved variant ID {$variant->id} for product ID {$product->id}");
+        }
+    }
+
+    private function resolvePrice(mixed $value): float
+    {
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        if (is_array($value) && isset($value[0]['amount'])) {
+            return (float) $value[0]['amount'];
+        }
+
+        return 0;
     }
 
     public function createAsset($filename, $url, $subfolderName = null, ?Volume $volume = null)

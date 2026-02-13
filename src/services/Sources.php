@@ -239,9 +239,15 @@ class Sources extends Component
     public function getCraftFieldsForSource(Source $source): array
     {
         $fields = [
-            ['handle' => 'title', 'name' => 'Title', 'type' => 'field', 'supported' => true, 'fieldType' => 'Title'],
-            ['handle' => 'slug', 'name' => 'Slug', 'type' => 'field', 'supported' => true, 'fieldType' => 'Slug'],
+            ['handle' => 'title', 'name' => 'Title', 'type' => 'field', 'supported' => true, 'fieldType' => 'Title', 'group' => 'element'],
+            ['handle' => 'slug', 'name' => 'Slug', 'type' => 'field', 'supported' => true, 'fieldType' => 'Slug', 'group' => 'element'],
         ];
+
+        if ($source->type === 'commerceProductType') {
+            $fields[] = ['handle' => 'variantTitle', 'name' => 'Title', 'type' => 'field', 'supported' => true, 'fieldType' => 'Title', 'group' => 'variant'];
+            $fields[] = ['handle' => 'sku', 'name' => 'SKU', 'type' => 'field', 'supported' => true, 'fieldType' => 'SKU', 'group' => 'variant'];
+            $fields[] = ['handle' => 'price', 'name' => 'Price', 'type' => 'field', 'supported' => true, 'fieldType' => 'Price', 'group' => 'variant'];
+        }
 
         // Collect custom fields from the source's field layouts
         $sourceCustomFields = [];

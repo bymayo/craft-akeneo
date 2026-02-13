@@ -44,6 +44,7 @@ class Attributes extends Component
             'pim_catalog_number' => $this->resolveNumber($filteredData),
             'akeneo_reference_entity' => $this->resolveReferenceEntity($filteredData),
             'pim_catalog_asset_collection' => $this->resolveAssetCollection($filteredData),
+            'pim_catalog_price_collection' => $this->resolvePriceCollection($filteredData),
             default => $this->resolveDefault($filteredData),
         };
     }
@@ -170,6 +171,20 @@ class Attributes extends Component
         }
 
         return $this->convertHandle($value);
+    }
+
+    /**
+     * Price collection - extracts the first price amount.
+     */
+    private function resolvePriceCollection(array $attributeData): mixed
+    {
+        $data = $attributeData[0]['data'] ?? null;
+
+        if (is_array($data) && isset($data[0]['amount'])) {
+            return (float) $data[0]['amount'];
+        }
+
+        return $data;
     }
 
     /**

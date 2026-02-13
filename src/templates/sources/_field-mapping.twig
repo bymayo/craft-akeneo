@@ -78,8 +78,11 @@
                 {% set idx = loop.index0 %}
                 {% set currentValue = mappingsByHandle[field.handle] ?? '' %}
 
-                {% if idx == 2 %}
+                {% if idx > 0 and (field.group ?? 'custom') != (craftFields[idx - 1].group ?? 'custom') %}
                     <tr><td colspan="4" style="padding: 0;"><hr style="margin: 8px 0;"></td></tr>
+                    {% if (field.group ?? '') == 'variant' %}
+                        <tr><td colspan="4"><strong>Variant</strong></td></tr>
+                    {% endif %}
                 {% endif %}
 
                 {% if field.type == 'table' %}
