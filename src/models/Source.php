@@ -15,7 +15,7 @@ class Source extends Model
     public ?string $akeneoLocale = null;
     public ?int $siteId = null;
     public ?string $filters = null;
-    public ?string $lastImportedAt = null;
+    public ?string $lastSyncedAt = null;
     public ?string $uid = null;
     public ?string $dateCreated = null;
     public ?string $dateUpdated = null;

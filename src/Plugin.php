@@ -28,7 +28,7 @@ use yii\web\Response;
  */
 class Plugin extends BasePlugin
 {
-    public string $schemaVersion = '1.8.0';
+    public string $schemaVersion = '1.9.0';
     public bool $hasCpSettings = true;
     public bool $hasCpSection = true;
 

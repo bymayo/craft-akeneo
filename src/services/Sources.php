@@ -412,20 +412,20 @@ class Sources extends Component
         return $locales;
     }
 
-    public function updateLastImportedAt(int $sourceId): void
+    public function updateLastSyncedAt(int $sourceId): void
     {
         Craft::$app->getDb()->createCommand()
             ->update('{{%akeneo_sources}}', [
-                'lastImportedAt' => (new \DateTime())->format('Y-m-d H:i:s'),
+                'lastSyncedAt' => (new \DateTime())->format('Y-m-d H:i:s'),
             ], ['id' => $sourceId])
             ->execute();
     }
 
-    public function updateAllLastImportedAt(): void
+    public function updateAllLastSyncedAt(): void
     {
         Craft::$app->getDb()->createCommand()
             ->update('{{%akeneo_sources}}', [
-                'lastImportedAt' => (new \DateTime())->format('Y-m-d H:i:s'),
+                'lastSyncedAt' => (new \DateTime())->format('Y-m-d H:i:s'),
             ])
             ->execute();
     }
@@ -442,7 +442,7 @@ class Sources extends Component
         $source->akeneoLocale = $record->akeneoLocale;
         $source->siteId = $record->siteId ? (int) $record->siteId : null;
         $source->filters = $record->filters;
-        $source->lastImportedAt = $record->lastImportedAt;
+        $source->lastSyncedAt = $record->lastSyncedAt;
         $source->uid = $record->uid;
         $source->dateCreated = $record->dateCreated;
         $source->dateUpdated = $record->dateUpdated;

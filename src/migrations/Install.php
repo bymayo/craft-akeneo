@@ -18,7 +18,7 @@ class Install extends Migration
             'akeneoLocale' => $this->string()->null(),
             'siteId' => $this->integer()->null(),
             'filters' => $this->text()->null(),
-            'lastImportedAt' => $this->dateTime()->null(),
+            'lastSyncedAt' => $this->dateTime()->null(),
             'dateCreated' => $this->dateTime()->notNull(),
             'dateUpdated' => $this->dateTime()->notNull(),
             'uid' => $this->uid(),

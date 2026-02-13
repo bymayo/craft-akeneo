@@ -37,7 +37,7 @@ class SourcesController extends Controller
                 'url' => 'akeneo/sources/' . $source->id,
                 'contentType' => $typePrefix,
                 'type' => $typeLabel,
-                'lastImportedAt' => $source->lastImportedAt,
+                'lastSyncedAt' => $source->lastSyncedAt,
             ];
         }
 

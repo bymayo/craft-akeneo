@@ -9,8 +9,10 @@
                 <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="data">{{ 'Data Only'|t('akeneo') }}</button>
                 <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="images">{{ 'Images Only'|t('akeneo') }}</button>
             </div>
-            {% if source.lastImportedAt %}
-                <span class="light" style="font-size: 11px; display: block; margin-top: 8px;">{{ 'Last Synced:'|t('akeneo') }} {{ source.lastImportedAt|date('d/m/Y H:i') }}</span>
+            {% if source.lastSyncedAt %}
+                <span class="light" style="font-size: 11px; display: block; margin-top: 8px;">{{ 'Last Synced:'|t('akeneo') }} {{ date(source.lastSyncedAt)|timestamp }}</span>
+            {% else %}
+                <span class="light" style="font-size: 11px; display: block; margin-top: 8px;">{{ 'Last Synced:'|t('akeneo') }} {{ 'Never'|t('akeneo') }}</span>
             {% endif %}
         </div>
     {% endfor %}

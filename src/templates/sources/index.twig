@@ -17,7 +17,7 @@
                         <th>{{ 'Name'|t('akeneo') }}</th>
                         <th>{{ 'Content Type'|t('akeneo') }}</th>
                         <th>{{ 'Entry Type'|t('akeneo') }}</th>
-                        <th>{{ 'Last Imported'|t('akeneo') }}</th>
+                        <th>{{ 'Last Synced'|t('akeneo') }}</th>
                         <th>{{ 'Action'|t('akeneo') }}</th>
                         <th></th>
                     </tr>
@@ -28,7 +28,7 @@
                             <td><a href="{{ url(source.url) }}">{{ source.title }}</a></td>
                             <td>{{ source.contentType }}</td>
                             <td>{{ source.type }}</td>
-                            <td>{{ source.lastImportedAt ? source.lastImportedAt|date('d/m/Y H:i') : 'Never' }}</td>
+                            <td>{{ source.lastSyncedAt ? date(source.lastSyncedAt)|timestamp : 'Never' }}</td>
                             <td class="thin">
                                 <div class="btngroup">
                                     <button type="button" class="btn" data-sync-type="all" data-source-id="{{ source.id }}">{{ 'Sync All'|t('akeneo') }}</button>

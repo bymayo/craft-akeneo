@@ -72,7 +72,7 @@ class SyncController extends Controller
 
         $sync->syncBySource($source, $syncImages);
 
-        Plugin::getInstance()->sources->updateLastImportedAt($sourceId);
+        Plugin::getInstance()->sources->updateLastSyncedAt($sourceId);
 
         return $this->asJson(['success' => true]);
     }

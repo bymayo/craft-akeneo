@@ -65,7 +65,7 @@ class SyncController extends Controller
         $this->stdout("Syncing source: {$source->name} (ID: {$source->id})\n");
 
         Plugin::getInstance()->sync->syncBySource($source, $syncImages);
-        Plugin::getInstance()->sources->updateLastImportedAt($source->id);
+        Plugin::getInstance()->sources->updateLastSyncedAt($source->id);
 
         return ExitCode::OK;
     }
