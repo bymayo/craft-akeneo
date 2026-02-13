@@ -94,18 +94,6 @@
             errors: settings.getErrors('password'),
         }) }}
 
-        {{ forms.textField({
-            label: 'Attribute Cache Duration',
-            instructions: 'How long (in seconds) to cache Akeneo attributes. Set to 0 to disable caching.',
-            id: 'attributeCacheDuration',
-            name: 'settings[attributeCacheDuration]',
-            value: settings.attributeCacheDuration,
-            type: 'number',
-            min: 0,
-            size: 10,
-            errors: settings.getErrors('attributeCacheDuration'),
-        }) }}
-
     </div>
 
     <div id="sync" class="hidden">
@@ -143,6 +131,18 @@
             value: settings.assetFolderName,
             required: true,
             errors: settings.getErrors('assetFolderName'),
+        }) }}
+
+        {{ forms.textField({
+            label: 'Attribute Cache Duration',
+            instructions: 'How long (in seconds) to cache Akeneo attributes. Set to 0 to disable caching.',
+            id: 'attributeCacheDuration',
+            name: 'settings[attributeCacheDuration]',
+            value: settings.attributeCacheDuration,
+            type: 'number',
+            min: 0,
+            size: 10,
+            errors: settings.getErrors('attributeCacheDuration'),
         }) }}
     </div>
 
