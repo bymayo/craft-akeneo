@@ -6,7 +6,9 @@ use Craft;
 use craft\helpers\FileHelper;
 use craft\events\RegisterCacheOptionsEvent;
 use craft\events\RegisterUrlRulesEvent;
+use craft\events\RegisterUserPermissionsEvent;
 use craft\services\Dashboard;
+use craft\services\UserPermissions;
 use craft\utilities\ClearCaches;
 use craft\web\UrlManager;
 use bymayo\akeneo\models\Settings;
@@ -66,9 +68,34 @@ class Plugin extends BasePlugin
         );
 
         Event::on(
+            UserPermissions::class,
+            UserPermissions::EVENT_REGISTER_PERMISSIONS,
+            function (RegisterUserPermissionsEvent $event) {
+                $event->permissions[] = [
+                    'heading' => 'Akeneo',
+                    'permissions' => [
+                        'akeneo-manageSources' => [
+                            'label' => 'Manage Akeneo Sources',
+                        ],
+                        'akeneo-viewWidgets' => [
+                            'label' => 'View Akeneo Sync Widgets',
+                        ],
+                        'akeneo-clearCache' => [
+                            'label' => 'Clear Akeneo Cache',
+                        ],
+                    ],
+                ];
+            }
+        );
+
+        Event::on(
             ClearCaches::class,
             ClearCaches::EVENT_REGISTER_CACHE_OPTIONS,
             function (RegisterCacheOptionsEvent $event) {
+                if (!Craft::$app->getUser()->checkPermission('akeneo-clearCache')) {
+                    return;
+                }
+
                 $event->options[] = [
                     'key' => 'akeneo-attributes',
                     'label' => 'Akeneo attributes',
@@ -83,6 +110,10 @@ class Plugin extends BasePlugin
 
     public function getCpNavItem(): ?array
     {
+        if (!Craft::$app->getUser()->checkPermission('akeneo-manageSources')) {
+            return null;
+        }
+
         $item = parent::getCpNavItem();
         $item['url'] = 'akeneo/sources';
 

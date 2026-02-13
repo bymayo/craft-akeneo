@@ -15,6 +15,17 @@ class SyncController extends Controller
 {
     protected array|int|bool $allowAnonymous = self::ALLOW_ANONYMOUS_NEVER;
 
+    public function beforeAction($action): bool
+    {
+        if (!parent::beforeAction($action)) {
+            return false;
+        }
+
+        $this->requirePermission('akeneo-manageSources');
+
+        return true;
+    }
+
     public function actionTestConnection(): Response
     {
         $this->requirePostRequest();

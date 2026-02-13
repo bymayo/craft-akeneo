@@ -16,6 +16,14 @@ class SyncWidget extends Widget
         return Craft::t('akeneo', 'Akeneo Product Sync');
     }
 
+    public static function isSelectable(): bool
+    {
+        return (
+            parent::isSelectable() &&
+            Craft::$app->getUser()->checkPermission('akeneo-viewWidgets')
+        );
+    }
+
     public static function icon(): ?string
     {
         return 'arrow-rotate-right';
