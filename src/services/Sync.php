@@ -15,7 +15,10 @@ use bymayo\akeneo\models\Source;
 
 use craft\elements\Entry;
 use craft\elements\Asset;
+use craft\elements\Category;
 use craft\fields\Assets as AssetsField;
+use craft\fields\Entries as EntriesField;
+use craft\fields\Categories as CategoriesField;
 use craft\helpers\Assets as AssetsHelper;
 use craft\helpers\Queue;
 use craft\helpers\StringHelper;
@@ -213,18 +216,54 @@ class Sync extends Component
 
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 if (array_is_list($decoded)) {
-                    // Check first element to distinguish: strings = multi-asset, objects = table rows
+                    // Check first element to distinguish: strings = multi-relational, objects = table rows
                     if (!empty($decoded) && is_string($decoded[0])) {
-                        // Multi-asset field
-                        if ($syncImages) {
-                            $volume = $this->getVolumeForField($handle);
-                            $allAssetIds = [];
-                            foreach ($decoded as $assetCode) {
-                                $assetIds = $this->resolveAssetField($assetCode, $values, $volume);
-                                $allAssetIds = array_merge($allAssetIds, $assetIds);
+                        $craftField = Craft::$app->getFields()->getFieldByHandle($handle);
+
+                        if ($craftField instanceof EntriesField) {
+                            // Multi-entries: resolve each attribute and look up entries
+                            $allIds = [];
+                            foreach ($decoded as $akeneoCode) {
+                                $codeAttrType = $attributeTypes[$akeneoCode] ?? 'other';
+                                $resolved = Plugin::getInstance()->attributes->resolveValue(
+                                    $akeneoCode, $codeAttrType, $values, $this->client, $locale
+                                );
+                                if ($resolved !== null) {
+                                    $ids = $this->resolveEntriesFieldValue($craftField, $resolved);
+                                    $allIds = array_merge($allIds, $ids);
+                                }
                             }
-                            if (!empty($allAssetIds)) {
-                                $entry->setFieldValue($handle, $allAssetIds);
+                            if (!empty($allIds)) {
+                                $entry->setFieldValue($handle, $allIds);
+                            }
+                        } elseif ($craftField instanceof CategoriesField) {
+                            // Multi-categories: resolve each attribute and look up categories
+                            $allIds = [];
+                            foreach ($decoded as $akeneoCode) {
+                                $codeAttrType = $attributeTypes[$akeneoCode] ?? 'other';
+                                $resolved = Plugin::getInstance()->attributes->resolveValue(
+                                    $akeneoCode, $codeAttrType, $values, $this->client, $locale
+                                );
+                                if ($resolved !== null) {
+                                    $ids = $this->resolveCategoriesFieldValue($craftField, $resolved);
+                                    $allIds = array_merge($allIds, $ids);
+                                }
+                            }
+                            if (!empty($allIds)) {
+                                $entry->setFieldValue($handle, $allIds);
+                            }
+                        } else {
+                            // Multi-asset field
+                            if ($syncImages) {
+                                $volume = $this->getVolumeForField($handle);
+                                $allAssetIds = [];
+                                foreach ($decoded as $assetCode) {
+                                    $assetIds = $this->resolveAssetField($assetCode, $values, $volume);
+                                    $allAssetIds = array_merge($allAssetIds, $assetIds);
+                                }
+                                if (!empty($allAssetIds)) {
+                                    $entry->setFieldValue($handle, $allAssetIds);
+                                }
                             }
                         }
                     } else {
@@ -289,8 +328,126 @@ class Sync extends Component
         } elseif ($handle === 'slug') {
             $entry->slug = $value;
         } else {
+            $field = Craft::$app->getFields()->getFieldByHandle($handle);
+
+            if ($field instanceof EntriesField) {
+                $value = $this->resolveEntriesFieldValue($field, $value);
+            } elseif ($field instanceof CategoriesField) {
+                $value = $this->resolveCategoriesFieldValue($field, $value);
+            }
+
             $entry->setFieldValue($handle, $value);
         }
+    }
+
+    private function resolveEntriesFieldValue(EntriesField $field, mixed $value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        $titles = array_map('trim', explode(',', (string) $value));
+        $ids = [];
+
+        // Resolve allowed section IDs from the field's sources
+        $sectionIds = [];
+        $sources = $field->sources;
+
+        if ($sources && $sources !== '*') {
+            foreach ($sources as $source) {
+                if (str_starts_with($source, 'section:')) {
+                    $uid = substr($source, 8);
+                    $section = Craft::$app->getEntries()->getSectionByUid($uid);
+
+                    if ($section) {
+                        $sectionIds[] = $section->id;
+                    }
+                }
+            }
+        }
+
+        foreach ($titles as $title) {
+            if ($title === '') {
+                continue;
+            }
+
+            $query = Entry::find()->title($title)->status(null)->limit(1);
+
+            if (!empty($sectionIds)) {
+                $query->sectionId($sectionIds);
+            }
+
+            $entry = $query->one();
+
+            // Create the entry if it doesn't exist
+            if (!$entry && !empty($sectionIds)) {
+                $entry = new Entry();
+                $entry->sectionId = $sectionIds[0];
+                $entry->title = $title;
+
+                if (!Craft::$app->elements->saveElement($entry)) {
+                    Plugin::log("Failed to create entry '{$title}': " . implode(', ', $entry->getErrorSummary(true)));
+                    continue;
+                }
+            }
+
+            if ($entry) {
+                $ids[] = $entry->id;
+            }
+        }
+
+        return $ids;
+    }
+
+    private function resolveCategoriesFieldValue(CategoriesField $field, mixed $value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        $titles = array_map('trim', explode(',', (string) $value));
+        $ids = [];
+
+        // Resolve the category group from the field's source
+        $group = null;
+        $source = $field->source;
+
+        if ($source && str_starts_with($source, 'group:')) {
+            $uid = substr($source, 6);
+            $group = Craft::$app->getCategories()->getGroupByUid($uid);
+        }
+
+        foreach ($titles as $title) {
+            if ($title === '') {
+                continue;
+            }
+
+            $query = Category::find()->title($title)->status(null)->limit(1);
+
+            if ($group) {
+                $query->groupId($group->id);
+            }
+
+            $category = $query->one();
+
+            // Create the category if it doesn't exist
+            if (!$category && $group) {
+                $category = new Category();
+                $category->groupId = $group->id;
+                $category->title = $title;
+
+                if (!Craft::$app->elements->saveElement($category)) {
+                    Plugin::log("Failed to create category '{$title}': " . implode(', ', $category->getErrorSummary(true)));
+                    continue;
+                }
+            }
+
+            if ($category) {
+                $ids[] = $category->id;
+            }
+        }
+
+        return $ids;
     }
 
     private function resolveMappingValue(string $akeneoAttr, array $values, array $attributeTypes, string $locale = 'en_GB'): mixed
@@ -354,19 +511,55 @@ class Sync extends Component
                 $fields = [];
 
                 foreach ($row as $fieldHandle => $fieldValue) {
-                    // Nested array field (table rows or multi-asset)
+                    // Nested array field (table rows, multi-asset, or multi-entries/categories)
                     if (is_array($fieldValue)) {
                         if (!empty($fieldValue) && is_string($fieldValue[0] ?? null)) {
-                            // Multi-asset field (array of akeneo codes)
-                            if ($syncImages) {
-                                $volume = $matrixFieldHandle ? $this->getVolumeForField($fieldHandle, $matrixFieldHandle, $entryTypeHandle) : null;
-                                $allAssetIds = [];
-                                foreach ($fieldValue as $assetCode) {
-                                    $assetIds = $this->resolveAssetField($assetCode, $values, $volume);
-                                    $allAssetIds = array_merge($allAssetIds, $assetIds);
+                            $nestedField = $this->getNestedField($matrixFieldHandle, $entryTypeHandle, $fieldHandle);
+
+                            if ($nestedField instanceof EntriesField) {
+                                // Multi-entries (array of akeneo codes)
+                                $allIds = [];
+                                foreach ($fieldValue as $akeneoCode) {
+                                    $codeAttrType = $attributeTypes[$akeneoCode] ?? 'other';
+                                    $resolved = Plugin::getInstance()->attributes->resolveValue(
+                                        $akeneoCode, $codeAttrType, $values, $this->client, $locale
+                                    );
+                                    if ($resolved !== null) {
+                                        $ids = $this->resolveEntriesFieldValue($nestedField, $resolved);
+                                        $allIds = array_merge($allIds, $ids);
+                                    }
                                 }
-                                if (!empty($allAssetIds)) {
-                                    $fields[$fieldHandle] = $allAssetIds;
+                                if (!empty($allIds)) {
+                                    $fields[$fieldHandle] = $allIds;
+                                }
+                            } elseif ($nestedField instanceof CategoriesField) {
+                                // Multi-categories (array of akeneo codes)
+                                $allIds = [];
+                                foreach ($fieldValue as $akeneoCode) {
+                                    $codeAttrType = $attributeTypes[$akeneoCode] ?? 'other';
+                                    $resolved = Plugin::getInstance()->attributes->resolveValue(
+                                        $akeneoCode, $codeAttrType, $values, $this->client, $locale
+                                    );
+                                    if ($resolved !== null) {
+                                        $ids = $this->resolveCategoriesFieldValue($nestedField, $resolved);
+                                        $allIds = array_merge($allIds, $ids);
+                                    }
+                                }
+                                if (!empty($allIds)) {
+                                    $fields[$fieldHandle] = $allIds;
+                                }
+                            } else {
+                                // Multi-asset field (array of akeneo codes)
+                                if ($syncImages) {
+                                    $volume = $matrixFieldHandle ? $this->getVolumeForField($fieldHandle, $matrixFieldHandle, $entryTypeHandle) : null;
+                                    $allAssetIds = [];
+                                    foreach ($fieldValue as $assetCode) {
+                                        $assetIds = $this->resolveAssetField($assetCode, $values, $volume);
+                                        $allAssetIds = array_merge($allAssetIds, $assetIds);
+                                    }
+                                    if (!empty($allAssetIds)) {
+                                        $fields[$fieldHandle] = $allAssetIds;
+                                    }
                                 }
                             }
                         } else {
@@ -402,6 +595,15 @@ class Sync extends Component
                     );
 
                     if ($resolved !== null) {
+                        // Check if this nested field is an Entries or Categories field
+                        $nestedField = $this->getNestedField($matrixFieldHandle, $entryTypeHandle, $fieldHandle);
+
+                        if ($nestedField instanceof EntriesField) {
+                            $resolved = $this->resolveEntriesFieldValue($nestedField, $resolved);
+                        } elseif ($nestedField instanceof CategoriesField) {
+                            $resolved = $this->resolveCategoriesFieldValue($nestedField, $resolved);
+                        }
+
                         $fields[$fieldHandle] = $resolved;
                     }
                 }
@@ -516,6 +718,31 @@ class Sync extends Component
         }
 
         return Craft::$app->getVolumes()->getVolumeByUid($parts[1]);
+    }
+
+    private function getNestedField(?string $matrixFieldHandle, string $entryTypeHandle, string $fieldHandle): ?\craft\base\FieldInterface
+    {
+        if (!$matrixFieldHandle) {
+            return Craft::$app->getFields()->getFieldByHandle($fieldHandle);
+        }
+
+        $matrixField = Craft::$app->getFields()->getFieldByHandle($matrixFieldHandle);
+
+        if (!$matrixField instanceof \craft\fields\Matrix) {
+            return null;
+        }
+
+        foreach ($matrixField->getEntryTypes() as $entryType) {
+            if ($entryType->handle === $entryTypeHandle) {
+                foreach ($entryType->getFieldLayout()->getCustomFields() as $nestedField) {
+                    if ($nestedField->handle === $fieldHandle) {
+                        return $nestedField;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     public function createAsset($filename, $url, $subfolderName = null, ?Volume $volume = null)

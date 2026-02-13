@@ -222,6 +222,8 @@ class Sources extends Component
         \craft\fields\Table::class,
         \craft\fields\Matrix::class,
         \craft\fields\Assets::class,
+        \craft\fields\Entries::class,
+        \craft\fields\Categories::class,
     ];
 
     private function isFieldSupported($field): bool
@@ -292,6 +294,12 @@ class Sources extends Component
             } elseif ($field instanceof \craft\fields\Assets) {
                 $fieldData['type'] = 'asset';
                 $fieldData['maxRelations'] = $field->maxRelations;
+            } elseif ($field instanceof \craft\fields\Entries) {
+                $fieldData['type'] = 'entries';
+                $fieldData['maxRelations'] = $field->maxRelations;
+            } elseif ($field instanceof \craft\fields\Categories) {
+                $fieldData['type'] = 'categories';
+                $fieldData['maxRelations'] = $field->maxRelations;
             } elseif ($field instanceof \craft\fields\Matrix) {
                 $fieldData['type'] = 'matrix';
                 $fieldData['entryTypes'] = [];
@@ -323,6 +331,12 @@ class Sources extends Component
                             }
                         } elseif ($nestedField instanceof \craft\fields\Assets) {
                             $nestedFieldData['type'] = 'asset';
+                            $nestedFieldData['maxRelations'] = $nestedField->maxRelations;
+                        } elseif ($nestedField instanceof \craft\fields\Entries) {
+                            $nestedFieldData['type'] = 'entries';
+                            $nestedFieldData['maxRelations'] = $nestedField->maxRelations;
+                        } elseif ($nestedField instanceof \craft\fields\Categories) {
+                            $nestedFieldData['type'] = 'categories';
                             $nestedFieldData['maxRelations'] = $nestedField->maxRelations;
                         }
 

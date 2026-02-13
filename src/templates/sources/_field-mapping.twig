@@ -256,6 +256,27 @@
                                                                     </td>
                                                                     <td></td>
                                                                 </tr>
+                                                            {% elseif (nestedField.type == 'entries' or nestedField.type == 'categories') and nestedField.maxRelations != 1 %}
+                                                                {# Multi Entries/Categories field inside Matrix entry row #}
+                                                                {% set nestedValue = row[nestedField.handle] ?? '' %}
+                                                                {% set nestedRelValues = nestedValue is iterable ? nestedValue : (nestedValue ? [nestedValue] : []) %}
+                                                                <tr>
+                                                                    <td style="vertical-align: middle; white-space: nowrap;">
+                                                                        {{ nestedField.name }}
+                                                                        <br>
+                                                                        <code style="font-size: 10px;">{{ nestedField.handle }}</code>
+                                                                    </td>
+                                                                    <td>
+                                                                        <select name="mappings[{{ idx }}][matrix][{{ entryType.handle }}][{{ matrixRowIdx }}][{{ nestedField.handle }}][akeneoMulti][]" multiple data-max-items="{{ nestedField.maxRelations ?? '' }}" style="display:none">
+                                                                            {% for opt in akeneoSelectOptions %}
+                                                                                {% if opt.value is defined and opt.value != '__none__' and opt.value != '__static__' and opt.optgroup is not defined %}
+                                                                                    <option value="{{ opt.value }}" {{ opt.value in nestedRelValues ? 'selected' }}>{{ opt.label }}</option>
+                                                                                {% endif %}
+                                                                            {% endfor %}
+                                                                        </select>
+                                                                    </td>
+                                                                    <td></td>
+                                                                </tr>
                                                             {% else %}
                                                                 {# Regular field inside Matrix entry row #}
                                                                 {% if not nestedField.supported %}
@@ -338,6 +359,31 @@
                                     options: akeneoAssetSelectOptions,
                                 }) }}
                             {% endif %}
+                        </td>
+                        <td></td>
+                    </tr>
+                {% elseif (field.type == 'entries' or field.type == 'categories') and field.maxRelations != 1 %}
+                    {% set relValues = currentValue ? currentValue|json_decode : [] %}
+                    {% if relValues is not iterable %}
+                        {% set relValues = currentValue ? [currentValue] : [] %}
+                    {% endif %}
+                    <tr>
+                        <td style="vertical-align: middle;">
+                            {{ field.name }}<br>
+                            <code>{{ field.handle }}</code>
+                            <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <span class="light">{{ field.fieldType }}</span>
+                        </td>
+                        <td>
+                            <select name="mappings[{{ idx }}][akeneoAssetMulti][]" id="akeneo-select-{{ idx }}" multiple data-max-items="{{ field.maxRelations ?? '' }}" style="display:none">
+                                {% for opt in akeneoSelectOptions %}
+                                    {% if opt.value is defined and opt.value != '__none__' and opt.value != '__static__' and opt.optgroup is not defined %}
+                                        <option value="{{ opt.value }}" {{ opt.value in relValues ? 'selected' }}>{{ opt.label }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
                         </td>
                         <td></td>
                     </tr>
@@ -601,6 +647,12 @@
                     } else {
                         html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneo]" style="display:none">' + akeneoAssetOptionsHtml + '</select></td>';
                     }
+                    html += '<td></td>';
+                    html += '</tr>';
+                } else if ((field.type === 'entries' || field.type === 'categories') && field.maxRelations !== 1) {
+                    html += '<tr>';
+                    html += '<td style="vertical-align: middle; white-space: nowrap;">' + field.name + '<br><code style="font-size: 10px;">' + field.handle + '</code></td>';
+                    html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneoMulti][]" multiple data-max-items="' + (field.maxRelations || '') + '" style="display:none">' + akeneoOptionsHtml + '</select></td>';
                     html += '<td></td>';
                     html += '</tr>';
                 } else if (!field.supported) {
