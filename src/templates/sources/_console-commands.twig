@@ -15,6 +15,10 @@
 } %}
 {% set selectedTab = 'consoleCommands' %}
 
+{% block actionButton %}
+    {% include 'akeneo/sources/_sync-button' %}
+{% endblock %}
+
 {% block content %}
 
     <div class="field">

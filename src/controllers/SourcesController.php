@@ -363,7 +363,7 @@ class SourcesController extends Controller
 
         Craft::$app->getSession()->setNotice('Field mappings saved.');
 
-        return $this->redirect('akeneo/sources/' . $sourceId . '/field-mapping');
+        return $this->redirectToPostedUrl($source);
     }
 
     public function actionRefreshAkeneoAttributes(): Response

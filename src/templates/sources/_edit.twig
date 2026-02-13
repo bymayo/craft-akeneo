@@ -21,6 +21,13 @@
     {% set selectedTab = 'settings' %}
 {% endif %}
 
+{% block actionButton %}
+    {% include 'akeneo/sources/_sync-button' %}
+    {% include 'akeneo/sources/_save-button' with {
+        continueEditingUrl: source.id ? 'akeneo/sources/' ~ source.id : 'akeneo/sources/{id}',
+    } %}
+{% endblock %}
+
 {% block content %}
 
     <input type="hidden" name="action" value="akeneo/sources/save">

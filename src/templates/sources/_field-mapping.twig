@@ -20,9 +20,17 @@
 } %}
 {% set selectedTab = 'fieldMapping' %}
 
+{% block actionButton %}
+    {% include 'akeneo/sources/_sync-button' %}
+    {% include 'akeneo/sources/_save-button' with {
+        continueEditingUrl: 'akeneo/sources/' ~ source.id ~ '/field-mapping',
+    } %}
+{% endblock %}
+
 {% block content %}
 
     <input type="hidden" name="action" value="akeneo/sources/save-field-mapping">
+    {{ redirectInput('akeneo/sources') }}
     <input type="hidden" name="sourceId" value="{{ source.id }}">
 
     {% if akeneoError %}

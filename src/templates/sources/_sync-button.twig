@@ -1,0 +1,31 @@
+{% if source.id is defined and source.id %}
+    <div class="btngroup">
+        <button type="button" class="btn" data-sync-type="all" data-source-id="{{ source.id }}">{{ 'Sync All'|t('akeneo') }}</button>
+        <button type="button" class="btn menubtn"></button>
+        <div class="menu">
+            <ul>
+                <li><a data-sync-type="data" data-source-id="{{ source.id }}">{{ 'Sync Data'|t('akeneo') }}</a></li>
+                <li><a data-sync-type="images" data-source-id="{{ source.id }}">{{ 'Sync Images'|t('akeneo') }}</a></li>
+            </ul>
+        </div>
+    </div>
+
+    {% js %}
+    document.querySelectorAll('[data-sync-type]').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.preventDefault();
+            var type = this.dataset.syncType;
+            var sourceId = this.dataset.sourceId;
+            var label = this.textContent;
+            Craft.postActionRequest('akeneo/sync/run', { type: type, sourceId: sourceId }, function(response) {
+                if (response.success) {
+                    Craft.cp.displayNotice(label + ' jobs added to the queue.');
+                    window.location.href = Craft.getCpUrl('akeneo/sources');
+                } else {
+                    Craft.cp.displayError(label + ' failed.');
+                }
+            });
+        });
+    });
+    {% endjs %}
+{% endif %}
