@@ -24,6 +24,8 @@ Akeneo is a Craft CMS plugin that syncs products and data from [Akeneo PIM](http
 - **Console Commands** - Run syncs from the terminal or cron jobs
 - **Connection Test** - Verify your Akeneo API connection from the settings page
 
+NOTE: This plugin only imports products and data from Akeneo. It does not export data to Akeneo.
+
 ## Install
 
 - Install with Composer via `composer require bymayo/akeneo` from your project directory
