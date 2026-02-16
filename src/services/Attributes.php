@@ -39,13 +39,10 @@ class Attributes extends Component
             'pim_catalog_multiselect' => $this->resolveMultiSelect($attributeCode, $filteredData, $client, $locale),
             'pim_catalog_boolean' => $this->resolveBoolean($filteredData),
             'pim_catalog_metric' => $this->resolveMetric($filteredData),
-            'pim_catalog_text' => $this->resolveText($filteredData),
-            'pim_catalog_textarea' => $this->resolveTextarea($filteredData),
-            'pim_catalog_number' => $this->resolveNumber($filteredData),
             'akeneo_reference_entity' => $this->resolveReferenceEntity($filteredData),
             'pim_catalog_asset_collection' => $this->resolveAssetCollection($filteredData),
             'pim_catalog_price_collection' => $this->resolvePriceCollection($filteredData),
-            default => $this->resolveDefault($filteredData),
+            default => $this->resolveData($filteredData),
         };
     }
 
@@ -136,30 +133,6 @@ class Attributes extends Component
     }
 
     /**
-     * Text - direct string value.
-     */
-    private function resolveText(array $attributeData): ?string
-    {
-        return $attributeData[0]['data'] ?? null;
-    }
-
-    /**
-     * Textarea - direct string value.
-     */
-    private function resolveTextarea(array $attributeData): ?string
-    {
-        return $attributeData[0]['data'] ?? null;
-    }
-
-    /**
-     * Number - direct numeric value.
-     */
-    private function resolveNumber(array $attributeData): mixed
-    {
-        return $attributeData[0]['data'] ?? null;
-    }
-
-    /**
      * Reference entity - direct value with handle conversion.
      */
     private function resolveReferenceEntity(array $attributeData): ?string
@@ -197,9 +170,9 @@ class Attributes extends Component
     }
 
     /**
-     * Default fallback - direct data access.
+     * Direct data access (text, textarea, number, and fallback).
      */
-    private function resolveDefault(array $attributeData): mixed
+    private function resolveData(array $attributeData): mixed
     {
         return $attributeData[0]['data'] ?? null;
     }
