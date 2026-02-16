@@ -13,7 +13,7 @@ class SyncWidget extends Widget
 
     public static function displayName(): string
     {
-        return Craft::t('akeneo', 'Akeneo Product Sync');
+        return Craft::t('akeneo', 'Akeneo');
     }
 
     public static function isSelectable(): bool
@@ -26,7 +26,7 @@ class SyncWidget extends Widget
 
     public static function icon(): ?string
     {
-        return 'arrow-rotate-right';
+        return Craft::getAlias('@bymayo/akeneo/icon-mask.svg');
     }
 
     public function getSettingsHtml(): ?string
