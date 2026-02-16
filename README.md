@@ -10,6 +10,8 @@ Akeneo is a Craft CMS plugin that syncs products and data from [Akeneo PIM](http
 - **Field Mapping** - Map Akeneo attributes to Craft fields with support for plain text, numbers, dropdowns, dates, table fields, matrix fields and asset fields
 - **Asset Syncing** - Download and sync Akeneo asset collections into Craft asset fields, respecting each field's volume configuration
 - **Multi-Asset Support** - Asset fields that allow multiple assets can be mapped to multiple Akeneo asset collections
+- **Entries & Categories** - Map Akeneo attributes to Entries and Categories fields with automatic creation of missing entries and categories
+- **Commerce Variants & Prices** - Sync variant title, SKU and price to the default variant on Commerce product types
 - **Static Values** - Set static values on mapped fields instead of pulling from Akeneo
 - **Product Filters** - Filter which Akeneo products are imported using attribute-based search filters (equals, contains, in, between, empty, etc.)
 - **Per-Source Locale** - Choose which Akeneo locale to pull attribute values from per source (e.g. `en_GB`, `en_US`)
@@ -17,6 +19,7 @@ Akeneo is a Craft CMS plugin that syncs products and data from [Akeneo PIM](http
 - **Orphaned Entry Handling** - Automatically disable or delete Craft entries that no longer exist in Akeneo after a sync
 - **Queue Based Syncing** - All syncing runs via Craft's queue system so the CP stays responsive
 - **Batched Jobs** - Large syncs are automatically split into batches using Craft's `BaseBatchedJob`
+- **Permissions** - Control access to sources, dashboard widgets and cache clearing with granular user permissions
 - **Dashboard Widget** - Trigger syncs directly from the dashboard with options for all data, data only, or images only
 - **Console Commands** - Run syncs from the terminal or cron jobs
 - **Connection Test** - Verify your Akeneo API connection from the settings page
@@ -82,6 +85,16 @@ Supported field types:
 - Table
 - Matrix (with nested field mapping)
 - Assets (single and multi-select)
+- Entries (auto-creates missing entries)
+- Categories (auto-creates missing categories)
+
+#### Commerce Variant Fields
+
+When the source type is a Commerce product type, the following special fields can be mapped to sync the default variant:
+
+- Variant Title
+- SKU
+- Price
 
 ### 4. Run a Sync
 
@@ -100,6 +113,16 @@ php craft akeneo/sync/all --source=1
 php craft akeneo/sync/data-only --source=1
 php craft akeneo/sync/images-only --source=1
 ```
+
+## Permissions
+
+The plugin registers three permissions under `Settings > Users > Permissions`:
+
+| Permission | Description |
+|---|---|
+| Manage Sources | Access and manage Akeneo sources in the control panel |
+| View Widgets | View and add Akeneo sync widgets on the dashboard |
+| Clear Cache | Clear Akeneo attribute and locale caches |
 
 ## Config File
 
