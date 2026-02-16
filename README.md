@@ -2,7 +2,7 @@
 
 # Akeneo for Craft CMS 5
 
-Akeneo is a Craft CMS plugin that syncs products and data from [Akeneo PIM](https://www.akeneo.com/) into Craft CMS entries.
+Akeneo is a Craft CMS plugin that syncs products and data from [Akeneo PIM](https://www.akeneo.com/) into Craft CMS.
 
 ## Features
 
@@ -17,8 +17,6 @@ Akeneo is a Craft CMS plugin that syncs products and data from [Akeneo PIM](http
 - **Per-Source Locale** - Choose which Akeneo locale to pull attribute values from per source (e.g. `en_GB`, `en_US`)
 - **Multi-Site Support** - Import entries into a specific Craft site per source
 - **Orphaned Entry Handling** - Automatically disable or delete Craft entries that no longer exist in Akeneo after a sync
-- **Queue Based Syncing** - All syncing runs via Craft's queue system so the CP stays responsive
-- **Batched Jobs** - Large syncs are automatically split into batches using Craft's `BaseBatchedJob`
 - **Permissions** - Control access to sources, dashboard widgets and cache clearing with granular user permissions
 - **Dashboard Widget** - Trigger syncs directly from the dashboard with options for all data, data only, or images only
 - **Console Commands** - Run syncs from the terminal or cron jobs
@@ -106,7 +104,7 @@ Syncs can be triggered from:
 
 ## Console Commands
 
-Each source has a **Console Commands** tab with copy-paste ready commands:
+Each source has a **Console Commands** tab with copy-paste ready commands (Replacing source=1 with your source ID):
 
 ```
 php craft akeneo/sync/all --source=1
