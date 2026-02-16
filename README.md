@@ -4,6 +4,8 @@
 
 Akeneo is a Craft CMS plugin that syncs products and data from [Akeneo PIM](https://www.akeneo.com/) into Craft CMS.
 
+<img src="https://raw.githubusercontent.com/bymayo/craft-akeneo/craft-5/resources/screenshot.png" width="850">
+
 ## Features
 
 - **Source Management** - Create multiple sources to sync different Akeneo product sets into different Craft sections or Commerce product types
