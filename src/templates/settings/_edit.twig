@@ -1,6 +1,6 @@
 {% extends '_layouts/cp' %}
 
-{% import '_includes/forms.twig' as forms %}
+{% import '_includes/forms' as forms %}
 
 {% set fullPageForm = true %}
 
@@ -48,7 +48,7 @@
             instructions: 'The base URL of your Akeneo PIM instance.',
             id: 'apiUrl',
             name: 'settings[apiUrl]',
-            value: settings.apiUrl,
+            value: settings['apiUrl'],
             suggestEnvVars: true,
             required: true,
             errors: settings.getErrors('apiUrl'),
@@ -59,7 +59,7 @@
             instructions: 'The Akeneo API client ID.',
             id: 'clientId',
             name: 'settings[clientId]',
-            value: settings.clientId,
+            value: settings['clientId'],
             suggestEnvVars: true,
             required: true,
             errors: settings.getErrors('clientId'),
@@ -70,7 +70,7 @@
             instructions: 'The Akeneo API secret key.',
             id: 'secretKey',
             name: 'settings[secretKey]',
-            value: settings.secretKey,
+            value: settings['secretKey'],
             suggestEnvVars: true,
             required: true,
             errors: settings.getErrors('secretKey'),
@@ -81,7 +81,7 @@
             instructions: 'The Akeneo API username.',
             id: 'username',
             name: 'settings[username]',
-            value: settings.username,
+            value: settings['username'],
             suggestEnvVars: true,
             required: true,
             errors: settings.getErrors('username'),
@@ -92,7 +92,7 @@
             instructions: 'The Akeneo API password.',
             id: 'password',
             name: 'settings[password]',
-            value: settings.password,
+            value: settings['password'],
             suggestEnvVars: true,
             required: true,
             errors: settings.getErrors('password'),
@@ -107,7 +107,7 @@
             instructions: 'Number of products to fetch per API request during sync.',
             id: 'syncPageSize',
             name: 'settings[syncPageSize]',
-            value: settings.syncPageSize,
+            value: settings['syncPageSize'],
             type: 'number',
             min: 1,
             max: 100,
@@ -120,7 +120,7 @@
             instructions: 'Maximum number of pages to fetch during a sync. Controls how many products are synced in total (page size x max pages).',
             id: 'syncMaxPages',
             name: 'settings[syncMaxPages]',
-            value: settings.syncMaxPages,
+            value: settings['syncMaxPages'],
             type: 'number',
             min: 1,
             size: 10,
@@ -132,7 +132,7 @@
             instructions: 'The folder name within the volume where Akeneo images are stored.',
             id: 'assetFolderName',
             name: 'settings[assetFolderName]',
-            value: settings.assetFolderName,
+            value: settings['assetFolderName'],
             required: true,
             errors: settings.getErrors('assetFolderName'),
         }) }}
@@ -142,7 +142,7 @@
             instructions: 'How long (in seconds) to cache Akeneo attributes. Set to 0 to disable caching.',
             id: 'attributeCacheDuration',
             name: 'settings[attributeCacheDuration]',
-            value: settings.attributeCacheDuration,
+            value: settings['attributeCacheDuration'],
             type: 'number',
             min: 0,
             size: 10,
@@ -157,7 +157,7 @@
             instructions: 'Priority for sync jobs in the queue. Lower numbers run first. Only applies to the default Craft queue.',
             id: 'jobPriority',
             name: 'settings[jobPriority]',
-            value: settings.jobPriority,
+            value: settings['jobPriority'],
             type: 'number',
             min: 1,
             size: 10,
@@ -169,7 +169,7 @@
             instructions: 'Maximum time (in seconds) a job can run before it is considered failed and retried.',
             id: 'jobTtr',
             name: 'settings[jobTtr]',
-            value: settings.jobTtr,
+            value: settings['jobTtr'],
             type: 'number',
             min: 60,
             size: 10,
@@ -183,7 +183,7 @@
             instructions: 'Run Akeneo sync jobs on a dedicated queue instead of the default Craft queue. When enabled, run <code>php craft akeneo-queue/listen</code> as a separate worker.',
             id: 'customQueue',
             name: 'settings[customQueue]',
-            on: settings.customQueue,
+            on: settings['customQueue'],
         }) }}
     </div>
 

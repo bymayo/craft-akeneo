@@ -1,5 +1,9 @@
 # Release Notes for Akeneo
 
+# 1.0.4 - 2026-02-18
+### Changed
+- Settings tabs to use Craft's own tab system
+
 # 1.0.3 - 2026-02-18
 ### Added
 - Custom queue support to run sync jobs on a dedicated queue
