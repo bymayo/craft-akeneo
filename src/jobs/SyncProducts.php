@@ -6,7 +6,6 @@ use bymayo\akeneo\Plugin;
 
 use Craft;
 use craft\base\Batchable;
-use craft\helpers\Queue;
 use craft\queue\BaseBatchedJob;
 
 class SyncProducts extends BaseBatchedJob
@@ -46,7 +45,7 @@ class SyncProducts extends BaseBatchedJob
             return;
         }
 
-        Queue::push(new HandleOrphanedEntries([
+        Plugin::pushJob(new HandleOrphanedEntries([
             'sourceId' => $this->sourceId,
             'syncStartedAt' => $this->syncStartedAt,
         ]));

@@ -19,6 +19,9 @@ class Settings extends Model
     public int $syncPageSize = 75;
     public int $syncMaxPages = 1000;
     public string $assetFolderName = 'Akeneo';
+    public bool $customQueue = false;
+    public int $jobPriority = 1024;
+    public int $jobTtr = 300;
 
     public function defineRules(): array
     {
@@ -29,6 +32,8 @@ class Settings extends Model
             ['syncMaxPages', 'integer', 'min' => 1],
             [['assetFolderName'], 'required'],
             [['assetFolderName'], 'string'],
+            ['jobPriority', 'integer', 'min' => 1],
+            ['jobTtr', 'integer', 'min' => 60],
         ];
     }
 }

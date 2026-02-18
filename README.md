@@ -19,6 +19,7 @@ Akeneo is a Craft CMS plugin that syncs products and data from [Akeneo PIM](http
 - **Per-Source Locale** - Choose which Akeneo locale to pull attribute values from per source (e.g. `en_GB`, `en_US`)
 - **Multi-Site Support** - Import entries into a specific Craft site per source
 - **Orphaned Entry Handling** - Automatically disable or delete Craft entries that no longer exist in Akeneo after a sync
+- **Custom Queue** - Optionally run sync jobs on a dedicated queue with configurable priority and TTR
 - **Permissions** - Control access to sources, dashboard widgets and cache clearing with granular user permissions
 - **Dashboard Widget** - Trigger syncs directly from the dashboard with options for all data, data only, or images only
 - **Console Commands** - Run syncs from the terminal or cron jobs
@@ -126,6 +127,20 @@ The plugin registers three permissions under `Settings > Users > Permissions`:
 | View Widgets | View and add Akeneo sync widgets on the dashboard |
 | Clear Cache | Clear Akeneo attribute and locale caches |
 
+## Custom Queue
+
+By default, sync jobs run on the default Craft queue. Enable **Custom Queue** in the Queue settings tab to run them on a dedicated `akeneo` queue channel instead.
+
+When enabled, run the worker as a separate process:
+
+```
+php craft akeneo-queue/listen
+```
+
+This prevents long-running syncs from blocking other Craft queue jobs.
+
+To manage and monitor the custom queue from the control panel, we recommend installing the [Custom Queue Manager](https://plugins.craftcms.com/custom-queue-manager) and [Queue Monitor](https://plugins.craftcms.com/queue-monitor) plugins.
+
 ## Config File
 
 You can override plugin settings by creating a `config/akeneo.php` file in your Craft project:
@@ -145,6 +160,9 @@ return [
     'syncPageSize' => 75,
     'syncMaxPages' => 1000,
     'assetFolderName' => 'Akeneo',
+    'customQueue' => false,
+    'jobPriority' => 1024,
+    'jobTtr' => 300,
 ];
 ```
 
@@ -159,6 +177,9 @@ return [
 | `syncPageSize` | `75` | Number of products to fetch per API request during sync |
 | `syncMaxPages` | `1000` | Maximum number of pages to fetch during a sync |
 | `assetFolderName` | `Akeneo` | The folder name within the volume where Akeneo images are stored |
+| `customQueue` | `false` | Run sync jobs on a dedicated queue instead of the default Craft queue |
+| `jobPriority` | `1024` | Priority for sync jobs. Lower numbers run first. Only applies to the default queue |
+| `jobTtr` | `300` | Maximum time (in seconds) a job can run before it is retried |
 
 ## Support
 

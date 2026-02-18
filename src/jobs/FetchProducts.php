@@ -5,7 +5,6 @@ namespace bymayo\akeneo\jobs;
 use bymayo\akeneo\Plugin;
 
 use Craft;
-use craft\helpers\Queue;
 use craft\queue\BaseJob;
 
 class FetchProducts extends BaseJob
@@ -52,7 +51,7 @@ class FetchProducts extends BaseJob
 
         Plugin::log("Fetched {$source->name} - Total Products: " . count($allProducts));
 
-        Queue::push(new SyncProducts([
+        Plugin::pushJob(new SyncProducts([
             'sourceId' => $source->id,
             'syncImages' => $this->syncImages,
             'products' => $allProducts,

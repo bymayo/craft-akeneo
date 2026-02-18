@@ -41,9 +41,32 @@ class Plugin extends BasePlugin
         FileHelper::writeToFile($file, $log, ['append' => true]);
     }
 
+    public static function pushJob($job): void
+    {
+        $settings = self::getInstance()->getSettings();
+
+        if ($settings->customQueue && Craft::$app->has('akeneoQueue')) {
+            Craft::$app->get('akeneoQueue')->push($job, $settings->jobTtr);
+        } else {
+            \craft\helpers\Queue::push($job, $settings->jobPriority, null, $settings->jobTtr);
+        }
+    }
+
     public function init(): void
     {
         parent::init();
+
+        if ($this->getSettings()->customQueue) {
+            Craft::$app->set('akeneoQueue', [
+                'class' => \craft\queue\Queue::class,
+                'channel' => 'akeneo',
+            ]);
+
+            $queue = Craft::$app->get('akeneoQueue');
+            if ($queue instanceof \yii\base\BootstrapInterface) {
+                $queue->bootstrap(Craft::$app);
+            }
+        }
 
         $this->setComponents([
             'attributes' => Attributes::class,

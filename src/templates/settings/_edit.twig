@@ -19,6 +19,10 @@
     sync: {
         label: 'Sync',
         url: '#sync'
+    },
+    queue: {
+        label: 'Queue',
+        url: '#queue'
     }
 } %}
 
@@ -143,6 +147,43 @@
             min: 0,
             size: 10,
             errors: settings.getErrors('attributeCacheDuration'),
+        }) }}
+    </div>
+
+    <div id="queue" class="hidden">
+        {{ forms.textField({
+            first: true,
+            label: 'Job Priority',
+            instructions: 'Priority for sync jobs in the queue. Lower numbers run first. Only applies to the default Craft queue.',
+            id: 'jobPriority',
+            name: 'settings[jobPriority]',
+            value: settings.jobPriority,
+            type: 'number',
+            min: 1,
+            size: 10,
+            errors: settings.getErrors('jobPriority'),
+        }) }}
+
+        {{ forms.textField({
+            label: 'Job TTR (Time To Reserve)',
+            instructions: 'Maximum time (in seconds) a job can run before it is considered failed and retried.',
+            id: 'jobTtr',
+            name: 'settings[jobTtr]',
+            value: settings.jobTtr,
+            type: 'number',
+            min: 60,
+            size: 10,
+            errors: settings.getErrors('jobTtr'),
+        }) }}
+
+        <hr>
+
+        {{ forms.lightswitchField({
+            label: 'Custom Queue',
+            instructions: 'Run Akeneo sync jobs on a dedicated queue instead of the default Craft queue. When enabled, run <code>php craft akeneo-queue/listen</code> as a separate worker.',
+            id: 'customQueue',
+            name: 'settings[customQueue]',
+            on: settings.customQueue,
         }) }}
     </div>
 

@@ -21,7 +21,6 @@ use craft\fields\Assets as AssetsField;
 use craft\fields\Entries as EntriesField;
 use craft\fields\Categories as CategoriesField;
 use craft\helpers\Assets as AssetsHelper;
-use craft\helpers\Queue;
 use craft\helpers\StringHelper;
 use craft\models\Volume;
 
@@ -66,7 +65,7 @@ class Sync extends Component
 
     public function syncBySource(Source $source, bool $syncImages): void
     {
-        Queue::push(new FetchProducts([
+        Plugin::pushJob(new FetchProducts([
             'sourceId' => $source->id,
             'syncImages' => $syncImages,
         ]));

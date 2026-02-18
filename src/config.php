@@ -22,4 +22,7 @@ return [
     'syncPageSize' => 75,
     'syncMaxPages' => 1000,
     'assetFolderName' => 'Akeneo',
+    'customQueue' => false,
+    'jobPriority' => 1024,
+    'jobTtr' => 300,
 ];
