@@ -17,10 +17,17 @@ class SyncController extends Controller
 
     public ?int $source = null;
 
+    public ?int $limit = null;
+
     public function options($actionID): array
     {
         $options = parent::options($actionID);
         $options[] = 'source';
+
+        if ($actionID === 'test') {
+            $options[] = 'limit';
+        }
+
         return $options;
     }
 
@@ -29,7 +36,7 @@ class SyncController extends Controller
      */
     public function actionAll(): int
     {
-        return $this->runSync(true, true);
+        return $this->runSync(true);
     }
 
     /**
@@ -37,7 +44,7 @@ class SyncController extends Controller
      */
     public function actionDataOnly(): int
     {
-        return $this->runSync(false, false);
+        return $this->runSync(false);
     }
 
     /**
@@ -45,10 +52,26 @@ class SyncController extends Controller
      */
     public function actionImagesOnly(): int
     {
-        return $this->runSync(false, true);
+        return $this->runSync(true);
     }
 
-    private function runSync(bool $syncData, bool $syncImages): int
+    /**
+     * Run a capped Test Sync without triggering orphan handling.
+     * Defaults to the Test Sync Limit setting; override with --limit.
+     */
+    public function actionTest(): int
+    {
+        $limit = $this->limit ?? Plugin::getInstance()->getSettings()->testSyncLimit;
+
+        if ($limit < 1) {
+            $this->stderr("--limit must be 1 or greater.\n");
+            return ExitCode::USAGE;
+        }
+
+        return $this->runSync(true, $limit, true);
+    }
+
+    private function runSync(bool $syncImages, ?int $limit = null, bool $isTest = false): int
     {
         if ($this->source === null) {
             $this->stderr("The --source flag is required. Usage: php craft akeneo/sync --source=1\n");
@@ -62,9 +85,10 @@ class SyncController extends Controller
             return ExitCode::USAGE;
         }
 
-        $this->stdout("Syncing source: {$source->name} (ID: {$source->id})\n");
+        $label = $isTest ? "Test syncing source (limit {$limit})" : 'Syncing source';
+        $this->stdout("{$label}: {$source->name} (ID: {$source->id})\n");
 
-        Plugin::getInstance()->sync->syncBySource($source, $syncImages);
+        Plugin::getInstance()->sync->syncBySource($source, $syncImages, $limit, $isTest);
         Plugin::getInstance()->sources->updateLastSyncedAt($source->id);
 
         return ExitCode::OK;

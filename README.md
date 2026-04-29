@@ -19,7 +19,7 @@ Akeneo is a Craft CMS plugin that syncs products and data from [Akeneo PIM](http
 - **Per-Source Locale** - Choose which Akeneo locale to pull attribute values from per source (e.g. `en_GB`, `en_US`)
 - **Multi-Site Support** - Import entries into a specific Craft site per source
 - **Orphaned Entry Handling** - Automatically disable or delete Craft entries that no longer exist in Akeneo after a sync
-- **Test Sync** - Try a quick 10-product sync to check your mappings, filters and volumes before running the real thing
+- **Test Sync** - Try a quick limited sync to check your mappings, filters and volumes before running the real thing
 - **Custom Queue** - Optionally run sync jobs on a dedicated queue with configurable priority and TTR
 - **Permissions** - Control access to sources, dashboard widgets and cache clearing with granular user permissions
 - **Dashboard Widget** - Trigger syncs directly from the dashboard with options for all data, data only, or images only
@@ -120,7 +120,7 @@ Syncs can be triggered from:
 
 **Test Sync** is a quick way to check your setup before kicking off a full import. It works just like **Sync All**, with two key differences:
 
-- **Only pulls 10 products.** It grabs the first page from Akeneo and stops after 10, so you get a fast result without waiting on the full catalogue.
+- **Only pulls a small batch.** Defaults to 10 products (configurable via the **Test Sync Limit** setting), so you get a fast result without waiting on the full catalogue. Override per-run with `--limit` when using the console command.
 - **Won't touch your existing entries.** A normal sync runs the Orphaned Entry Action afterwards, which would disable or delete anything not in the batch. Since a test only pulls 10 products, that step is skipped — your live entries are left alone.
 
 It's handy when you want to:
@@ -139,7 +139,11 @@ Each source has a **Console Commands** tab with copy-paste ready commands (Repla
 php craft akeneo/sync/all --source=1
 php craft akeneo/sync/data-only --source=1
 php craft akeneo/sync/images-only --source=1
+php craft akeneo/sync/test --source=1
+php craft akeneo/sync/test --source=1 --limit=25
 ```
+
+The `test` action mirrors **Test Sync** in the control panel — it pulls a small batch and skips orphan handling. Without `--limit` it uses the **Test Sync Limit** setting (default `10`).
 
 ## Permissions
 
@@ -183,6 +187,7 @@ return [
     'attributeCacheDuration' => 21600,
     'syncPageSize' => 75,
     'syncMaxPages' => 1000,
+    'testSyncLimit' => 10,
     'assetFolderName' => 'Akeneo',
     'customQueue' => false,
     'jobPriority' => 1024,
@@ -200,6 +205,7 @@ return [
 | `attributeCacheDuration` | `21600` | How long (in seconds) to cache Akeneo attributes. Set to `0` to disable |
 | `syncPageSize` | `75` | Number of products to fetch per API request during sync |
 | `syncMaxPages` | `1000` | Maximum number of pages to fetch during a sync |
+| `testSyncLimit` | `10` | Default product limit for a Test Sync. Override per-run with `--limit` on the console command |
 | `assetFolderName` | `Akeneo` | The folder name within the volume where Akeneo images are stored |
 | `customQueue` | `false` | Run sync jobs on a dedicated queue instead of the default Craft queue |
 | `jobPriority` | `1024` | Priority for sync jobs. Lower numbers run first. Only applies to the default queue |

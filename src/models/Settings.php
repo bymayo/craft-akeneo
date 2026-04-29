@@ -18,6 +18,7 @@ class Settings extends Model
     public int $attributeCacheDuration = 21600;
     public int $syncPageSize = 75;
     public int $syncMaxPages = 1000;
+    public int $testSyncLimit = 10;
     public string $assetFolderName = 'Akeneo';
     public bool $customQueue = false;
     public int $jobPriority = 1024;
@@ -30,6 +31,7 @@ class Settings extends Model
             ['attributeCacheDuration', 'integer', 'min' => 0],
             ['syncPageSize', 'integer', 'min' => 1, 'max' => 100],
             ['syncMaxPages', 'integer', 'min' => 1],
+            ['testSyncLimit', 'integer', 'min' => 1, 'max' => 100],
             [['assetFolderName'], 'required'],
             [['assetFolderName'], 'string'],
             ['jobPriority', 'integer', 'min' => 1],

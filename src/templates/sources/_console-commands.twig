@@ -40,10 +40,24 @@
                     <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
                 </div>
             </div>
-            <div>
+            <div style="margin-bottom: 8px;">
                 <label class="light" style="display: block; margin-bottom: 4px;">Sync Images Only</label>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/images-only --source={{ source.id }}">
+                    <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
+                </div>
+            </div>
+            <div style="margin-bottom: 8px;">
+                <label class="light" style="display: block; margin-bottom: 4px;">Test Sync (uses Test Sync Limit setting)</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/test --source={{ source.id }}">
+                    <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
+                </div>
+            </div>
+            <div>
+                <label class="light" style="display: block; margin-bottom: 4px;">Test Sync (custom limit)</label>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/test --source={{ source.id }} --limit=25">
                     <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
                 </div>
             </div>

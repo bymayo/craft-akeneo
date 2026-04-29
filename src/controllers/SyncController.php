@@ -82,7 +82,7 @@ class SyncController extends Controller
         };
 
         $isTest = $type === 'test';
-        $limit = $isTest ? 10 : null;
+        $limit = $isTest ? Plugin::getInstance()->getSettings()->testSyncLimit : null;
 
         $sync->syncBySource($source, $syncImages, $limit, $isTest);
 

@@ -128,6 +128,19 @@
         }) }}
 
         {{ forms.textField({
+            label: 'Test Sync Limit',
+            instructions: 'Number of products to fetch when running a Test Sync. Override per-run with the --limit flag on the console command.',
+            id: 'testSyncLimit',
+            name: 'settings[testSyncLimit]',
+            value: settings['testSyncLimit'],
+            type: 'number',
+            min: 1,
+            max: 100,
+            size: 10,
+            errors: settings.getErrors('testSyncLimit'),
+        }) }}
+
+        {{ forms.textField({
             label: 'Asset Folder Name',
             instructions: 'The folder name within the volume where Akeneo images are stored.',
             id: 'assetFolderName',
