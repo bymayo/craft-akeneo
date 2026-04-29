@@ -167,6 +167,8 @@ php craft akeneo-queue/listen
 
 This prevents long-running syncs from blocking other Craft queue jobs.
 
+> **After updating the plugin, restart the queue listener** so new features (like the Log) are picked up.
+
 To manage and monitor the custom queue from the control panel, we recommend installing the [Custom Queue Manager](https://plugins.craftcms.com/custom-queue-manager) and [Queue Monitor](https://plugins.craftcms.com/queue-monitor) plugins.
 
 ## Config File

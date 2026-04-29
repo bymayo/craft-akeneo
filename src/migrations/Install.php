@@ -49,11 +49,41 @@ class Install extends Migration
             'CASCADE'
         );
 
+        $this->createTable('{{%akeneo_sync_logs}}', [
+            'id' => $this->primaryKey(),
+            'sourceId' => $this->integer()->notNull(),
+            'sku' => $this->string()->null(),
+            'title' => $this->string()->null(),
+            'elementId' => $this->integer()->null(),
+            'status' => $this->string(16)->notNull(),
+            'message' => $this->text()->null(),
+            'isTest' => $this->boolean()->notNull()->defaultValue(false),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+
+        $this->createIndex(null, '{{%akeneo_sync_logs}}', ['sourceId']);
+        $this->createIndex(null, '{{%akeneo_sync_logs}}', ['sourceId', 'status']);
+        $this->createIndex(null, '{{%akeneo_sync_logs}}', ['dateCreated']);
+        $this->createIndex(null, '{{%akeneo_sync_logs}}', ['elementId']);
+
+        $this->addForeignKey(
+            null,
+            '{{%akeneo_sync_logs}}',
+            'sourceId',
+            '{{%akeneo_sources}}',
+            'id',
+            'CASCADE',
+            'CASCADE'
+        );
+
         return true;
     }
 
     public function safeDown(): bool
     {
+        $this->dropTableIfExists('{{%akeneo_sync_logs}}');
         $this->dropTableIfExists('{{%akeneo_source_field_mappings}}');
         $this->dropTableIfExists('{{%akeneo_sources}}');
 

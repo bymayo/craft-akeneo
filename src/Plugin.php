@@ -30,7 +30,7 @@ use yii\web\Response;
  */
 class Plugin extends BasePlugin
 {
-    public string $schemaVersion = '1.9.0';
+    public string $schemaVersion = '1.11.0';
     public bool $hasCpSettings = true;
     public bool $hasCpSection = true;
 
@@ -174,6 +174,7 @@ class Plugin extends BasePlugin
                 $event->rules['akeneo/sources/<sourceId:\d+>'] = 'akeneo/sources/edit';
                 $event->rules['akeneo/sources/<sourceId:\d+>/field-mapping'] = 'akeneo/sources/field-mapping';
                 $event->rules['akeneo/sources/<sourceId:\d+>/console-commands'] = 'akeneo/sources/console-commands';
+                $event->rules['akeneo/sources/<sourceId:\d+>/log'] = 'akeneo/sources/log';
             }
         );
     }

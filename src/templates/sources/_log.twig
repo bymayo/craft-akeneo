@@ -1,0 +1,112 @@
+{% extends '_layouts/cp' %}
+
+{% set title = source.name %}
+{% set selectedSubnavItem = 'sources' %}
+
+{% set crumbs = [
+    { label: 'Akeneo', url: url('akeneo') },
+    { label: 'Sources', url: url('akeneo/sources') },
+] %}
+
+{% set tabs = {
+    settings: { label: 'Settings', url: url('akeneo/sources/' ~ source.id) },
+    fieldMapping: { label: 'Field Mapping', url: url('akeneo/sources/' ~ source.id ~ '/field-mapping') },
+    consoleCommands: { label: 'Console Commands', url: url('akeneo/sources/' ~ source.id ~ '/console-commands') },
+    log: { label: 'Log', url: url('akeneo/sources/' ~ source.id ~ '/log') },
+} %}
+{% set selectedTab = 'log' %}
+
+{% block actionButton %}
+    {% include 'akeneo/sources/_sync-button' %}
+{% endblock %}
+
+{% block content %}
+
+    <div class="flex" style="margin-bottom: 14px; gap: 14px; align-items: center;">
+        <div class="flex" style="gap: 6px;">
+            <a class="btn{{ statusFilter is null ? ' active' : '' }}" href="{{ url('akeneo/sources/' ~ source.id ~ '/log') }}">
+                All <span class="light">({{ counts.total }})</span>
+            </a>
+            <a class="btn{{ statusFilter == 'success' ? ' active' : '' }}" href="{{ url('akeneo/sources/' ~ source.id ~ '/log', { status: 'success' }) }}">
+                Success <span class="light">({{ counts.success }})</span>
+            </a>
+            <a class="btn{{ statusFilter == 'warning' ? ' active' : '' }}" href="{{ url('akeneo/sources/' ~ source.id ~ '/log', { status: 'warning' }) }}">
+                Warning <span class="light">({{ counts.warning }})</span>
+            </a>
+            <a class="btn{{ statusFilter == 'fail' ? ' active' : '' }}" href="{{ url('akeneo/sources/' ~ source.id ~ '/log', { status: 'fail' }) }}">
+                Fail <span class="light">({{ counts.fail }})</span>
+            </a>
+        </div>
+
+        {% if counts.total > 0 %}
+            <form method="post" action="" style="margin-left: auto;" onsubmit="return confirm('Clear all log entries for this source?');">
+                {{ csrfInput() }}
+                <input type="hidden" name="action" value="akeneo/sources/clear-log">
+                <input type="hidden" name="sourceId" value="{{ source.id }}">
+                <button type="submit" class="btn small">Clear log</button>
+            </form>
+        {% endif %}
+    </div>
+
+    {% if logs is empty %}
+        <p class="light">No log entries yet. Run a sync to populate this list.</p>
+    {% else %}
+        <div class="tableview">
+            <table class="data fullwidth">
+                <thead>
+                    <tr>
+                        <th scope="col">Status</th>
+                        <th scope="col">SKU</th>
+                        <th scope="col">Title</th>
+                        <th scope="col">Message</th>
+                        <th scope="col">Sync Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                        <tr>
+                            <td>
+                                {% if log.status == 'success' %}
+                                    <span class="status green"></span> Success
+                                {% elseif log.status == 'warning' %}
+                                    <span class="status orange"></span> Warning
+                                {% else %}
+                                    <span class="status red"></span> Fail
+                                {% endif %}
+                            </td>
+                            <td><code>{{ log.sku ?: '—' }}</code></td>
+                            <td>
+                                {% if log.title %}
+                                    {% set element = log.elementId ? craft.app.elements.getElementById(log.elementId) : null %}
+                                    {% if element and element.cpEditUrl %}
+                                        <a href="{{ element.cpEditUrl }}">{{ log.title }}</a>
+                                    {% else %}
+                                        {{ log.title }}
+                                    {% endif %}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td class="light" style="white-space: pre-wrap;">{{ log.message ?: '—' }}</td>
+                            <td class="light" style="white-space: nowrap;" title="{{ log.dateCreated|datetime('short') }}">{{ craft.app.formatter.asRelativeTime(log.dateCreated) }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% set hasNext = logs|length >= perPage %}
+        {% if page > 1 or hasNext %}
+            <div class="flex" style="margin-top: 14px; gap: 8px; align-items: center;">
+                {% if page > 1 %}
+                    <a class="btn" href="{{ url('akeneo/sources/' ~ source.id ~ '/log', { status: statusFilter, page: page - 1 }) }}">‹ Previous</a>
+                {% endif %}
+                <span class="light">Page {{ page }}</span>
+                {% if hasNext %}
+                    <a class="btn" href="{{ url('akeneo/sources/' ~ source.id ~ '/log', { status: statusFilter, page: page + 1 }) }}">Next ›</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% endif %}
+
+{% endblock %}

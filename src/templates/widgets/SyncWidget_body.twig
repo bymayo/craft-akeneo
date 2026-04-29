@@ -11,9 +11,9 @@
         <div class="akeneo-widget-source" style="{% if not loop.first %}margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--gray-200);{% endif %}">
             <strong style="display: block; margin-bottom: 8px;">{{ source.name }}</strong>
             <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="all">{{ 'Sync All'|t('akeneo') }}</button>
-                <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="data">{{ 'Data Only'|t('akeneo') }}</button>
-                <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="images">{{ 'Images Only'|t('akeneo') }}</button>
+                <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="all"><span class="icon" style="display:inline-flex;width:12px;height:12px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('arrows-rotate') }}</span>{{ 'Sync All'|t('akeneo') }}</button>
+                <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="data"><span class="icon" style="display:inline-flex;width:12px;height:12px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('database') }}</span>{{ 'Data Only'|t('akeneo') }}</button>
+                <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="images"><span class="icon" style="display:inline-flex;width:12px;height:12px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('image') }}</span>{{ 'Images Only'|t('akeneo') }}</button>
             </div>
             {% if source.lastSyncedAt %}
                 <span class="light" style="font-size: 11px; display: block; margin-top: 8px;">{{ 'Last Synced:'|t('akeneo') }} {{ date(source.lastSyncedAt)|timestamp }}</span>

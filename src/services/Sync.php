@@ -12,6 +12,7 @@ use Akeneo\Pim\ApiClient\Search\SearchBuilder;
 
 use bymayo\akeneo\jobs\FetchProducts;
 use bymayo\akeneo\models\Source;
+use bymayo\akeneo\records\SyncLogRecord;
 
 use craft\base\Element;
 use craft\elements\Entry;
@@ -32,10 +33,17 @@ class Sync extends Component
 
     private $client;
 
+    private array $currentSyncIssues = [];
+
     public function __construct($config = [])
     {
         parent::__construct($config);
         $this->client = $this->connect();
+    }
+
+    private function recordAssetIssue(string $message): void
+    {
+        $this->currentSyncIssues[] = $message;
     }
 
     public function getClient()
@@ -71,6 +79,58 @@ class Sync extends Component
             'limit' => $limit,
             'isTest' => $isTest,
         ]));
+    }
+
+    public function recordSyncLog(int $sourceId, ?string $sku, ?string $title, string $status, ?string $message = null, bool $isTest = false, ?int $elementId = null): void
+    {
+        $record = new SyncLogRecord();
+        $record->sourceId = $sourceId;
+        $record->sku = $sku !== null ? mb_substr($sku, 0, 255) : null;
+        $record->title = $title !== null ? mb_substr($title, 0, 255) : null;
+        $record->elementId = $elementId;
+        $record->status = $status;
+        $record->message = $message;
+        $record->isTest = $isTest;
+        $record->save(false);
+    }
+
+    public function getLogsForSource(int $sourceId, ?string $status = null, int $limit = 200, int $offset = 0): array
+    {
+        $query = SyncLogRecord::find()
+            ->where(['sourceId' => $sourceId])
+            ->orderBy(['dateCreated' => SORT_DESC, 'id' => SORT_DESC])
+            ->limit($limit)
+            ->offset($offset);
+
+        if ($status !== null && $status !== '') {
+            $query->andWhere(['status' => $status]);
+        }
+
+        return $query->all();
+    }
+
+    public function getLogCountsForSource(int $sourceId): array
+    {
+        $rows = SyncLogRecord::find()
+            ->select(['status', 'count' => 'COUNT(*)'])
+            ->where(['sourceId' => $sourceId])
+            ->groupBy(['status'])
+            ->asArray()
+            ->all();
+
+        $counts = ['success' => 0, 'warning' => 0, 'fail' => 0, 'total' => 0];
+
+        foreach ($rows as $row) {
+            $counts[$row['status']] = (int) $row['count'];
+            $counts['total'] += (int) $row['count'];
+        }
+
+        return $counts;
+    }
+
+    public function clearLogsForSource(int $sourceId): int
+    {
+        return SyncLogRecord::deleteAll(['sourceId' => $sourceId]);
     }
 
     public function buildSearchFilters(Source $source): array
@@ -137,12 +197,17 @@ class Sync extends Component
         return $value;
     }
 
-    public function createEntryFromMappings(Source $source, array $data, bool $syncImages): ?int
+    public function createEntryFromMappings(Source $source, array $data, bool $syncImages, bool $isTest = false): ?int
     {
+        $this->currentSyncIssues = [];
+        $sku = $data['identifier'] ?? $data['code'] ?? null;
+        $skuLabel = $sku ?? '(no identifier)';
         $mappings = Plugin::getInstance()->sources->getMappingsBySourceId($source->id);
 
         if (empty($mappings)) {
-            Plugin::log("No field mappings found for source '{$source->name}' (ID: {$source->id})");
+            $message = "No field mappings configured for source '{$source->name}'";
+            Plugin::log("{$skuLabel} - Fail: {$message}");
+            $this->recordSyncLog($source->id, $sku, null, 'fail', $message, $isTest);
             return null;
         }
 
@@ -179,7 +244,9 @@ class Sync extends Component
             $section = Craft::$app->getEntries()->getSectionById($source->typeId);
 
             if (!$section) {
-                Plugin::log("Section with ID {$source->typeId} not found for source '{$source->name}'");
+                $message = "Section with ID {$source->typeId} not found for source '{$source->name}'";
+                Plugin::log("{$skuLabel} - Fail: {$message}");
+                $this->recordSyncLog($source->id, $sku, null, 'fail', $message, $isTest);
                 return null;
             }
 
@@ -209,7 +276,9 @@ class Sync extends Component
             $commercePlugin = Craft::$app->plugins->getPlugin('commerce');
 
             if (!$commercePlugin) {
-                Plugin::log("Commerce plugin is not installed. Cannot sync source '{$source->name}' with type 'commerceProductType'.");
+                $message = "Commerce plugin is not installed. Cannot sync source '{$source->name}' with type 'commerceProductType'.";
+                Plugin::log("{$skuLabel} - Fail: {$message}");
+                $this->recordSyncLog($source->id, $sku, null, 'fail', $message, $isTest);
                 return null;
             }
 
@@ -236,7 +305,9 @@ class Sync extends Component
                 $element->siteId = $siteId;
             }
         } else {
-            Plugin::log("Unsupported source type '{$source->type}' for source '{$source->name}'");
+            $message = "Unsupported source type '{$source->type}' for source '{$source->name}'";
+            Plugin::log("{$skuLabel} - Fail: {$message}");
+            $this->recordSyncLog($source->id, $sku, null, 'fail', $message, $isTest);
             return null;
         }
 
@@ -363,8 +434,11 @@ class Sync extends Component
         // Save
         if (!Craft::$app->elements->saveElement($element)) {
             $errors = implode(', ', $element->getErrorSummary(true));
-            Plugin::log("Failed to save element for source '{$source->name}': {$errors}");
-            Craft::error("Failed to save element for source '{$source->name}': {$errors}", __METHOD__);
+            $title = $element->title ?: null;
+            $titleLabel = $title ?: '(no title)';
+            Plugin::log("{$skuLabel} - {$titleLabel} - Fail: {$errors}");
+            Craft::error("Failed to save element for source '{$source->name}' (SKU {$skuLabel}): {$errors}", __METHOD__);
+            $this->recordSyncLog($source->id, $sku, $title, 'fail', $errors, $isTest);
             return null;
         }
 
@@ -372,6 +446,18 @@ class Sync extends Component
         if ($source->type === 'commerceProductType' && $element instanceof \craft\commerce\elements\Product) {
             Plugin::log("Syncing default variant for product ID {$element->id} with data: " . json_encode($variantData));
             $this->syncDefaultVariant($element, $variantData);
+        }
+
+        $title = $element->title ?: null;
+        $titleLabel = $title ?: '(no title)';
+
+        if (!empty($this->currentSyncIssues)) {
+            $issuesMessage = implode("\n", $this->currentSyncIssues);
+            Plugin::log("{$skuLabel} - {$titleLabel} - Warning: {$issuesMessage}");
+            $this->recordSyncLog($source->id, $sku, $title, 'warning', $issuesMessage, $isTest, $element->id);
+        } else {
+            Plugin::log("{$skuLabel} - {$titleLabel} - Success");
+            $this->recordSyncLog($source->id, $sku, $title, 'success', null, $isTest, $element->id);
         }
 
         return $element->id;
@@ -727,7 +813,9 @@ class Sync extends Component
                     }
                 }
             } catch (\Exception $e) {
-                Plugin::log("Failed to resolve asset '{$assetCode}' for '{$akeneoCode}': " . $e->getMessage());
+                $message = "Failed to resolve asset '{$assetCode}' for '{$akeneoCode}': " . $e->getMessage();
+                Plugin::log($message);
+                $this->recordAssetIssue($message);
             }
         }
 
@@ -848,7 +936,9 @@ class Sync extends Component
         $folderSlug = StringHelper::toKebabCase($folderName);
 
         if (!$volume) {
-            Plugin::log("No volume provided for asset '{$filename}'. Ensure the Asset field has a default upload location configured.");
+            $message = "No volume provided for asset '{$filename}'. Ensure the Asset field has a default upload location configured.";
+            Plugin::log($message);
+            $this->recordAssetIssue($message);
             return null;
         }
 
@@ -953,12 +1043,16 @@ class Sync extends Component
                     return $existingAsset;
                 }
 
-                Plugin::log("Orphan file detected: '{$filename}' exists on volume '{$volume->name}' but has no Asset record. Skipping. Manually delete the file from the volume or re-index the volume to recover.");
+                $message = "Orphan file detected: '{$filename}' exists on volume '{$volume->name}' but has no Asset record. Skipping. Manually delete the file from the volume or re-index the volume to recover.";
+                Plugin::log($message);
+                $this->recordAssetIssue($message);
                 return null;
             }
 
             Craft::error('Failed to save the asset: ' . $errorMessage, __METHOD__);
-            Plugin::log('Failed to save the asset: ' . $errorMessage);
+            $message = "Failed to save asset '{$filename}': " . $errorMessage;
+            Plugin::log($message);
+            $this->recordAssetIssue($message);
             return null;
         }
 

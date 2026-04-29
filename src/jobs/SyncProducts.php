@@ -31,7 +31,7 @@ class SyncProducts extends BaseBatchedJob
             return;
         }
 
-        Plugin::getInstance()->sync->createEntryFromMappings($source, $item, $this->syncImages);
+        Plugin::getInstance()->sync->createEntryFromMappings($source, $item, $this->syncImages, $this->isTest);
     }
 
     protected function after(): void

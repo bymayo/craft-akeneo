@@ -193,7 +193,7 @@
 
         {{ forms.lightswitchField({
             label: 'Custom Queue',
-            instructions: 'Run Akeneo sync jobs on a dedicated queue instead of the default Craft queue. When enabled, run <code>php craft akeneo-queue/listen</code> as a separate worker.',
+            instructions: 'Run Akeneo sync jobs on a dedicated queue instead of the default Craft queue. When enabled, run <code>php craft akeneo-queue/listen</code> as a separate worker. Restart the listener after updating the plugin so new features (like the Log) are picked up.',
             id: 'customQueue',
             name: 'settings[customQueue]',
             on: settings['customQueue'],

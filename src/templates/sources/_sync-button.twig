@@ -1,19 +1,6 @@
-{% if source.id is defined and source.id %}
-    <div class="btngroup">
-        <button type="button" class="btn" data-sync-type="all" data-source-id="{{ source.id }}">{{ 'Sync All'|t('akeneo') }}</button>
-        <button type="button" class="btn menubtn"></button>
-        <div class="menu">
-            <ul>
-                <li><a data-sync-type="data" data-source-id="{{ source.id }}">{{ 'Sync Data'|t('akeneo') }}</a></li>
-                <li><a data-sync-type="images" data-source-id="{{ source.id }}">{{ 'Sync Images'|t('akeneo') }}</a></li>
-            </ul>
-            <hr class="padded" role="presentation">
-            <ul>
-                <li><a data-sync-type="test" data-source-id="{{ source.id }}"><span class="icon" style="display:inline-flex;width:14px;height:14px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('square-terminal') }}</span>{{ 'Test Sync (10 products)'|t('akeneo') }}</a></li>
-            </ul>
-        </div>
-    </div>
+{% include 'akeneo/sources/_sync-menu' %}
 
+{% if source.id is defined and source.id %}
     {% js %}
     document.querySelectorAll('[data-sync-type]').forEach(function(el) {
         el.addEventListener('click', function(e) {
@@ -24,7 +11,6 @@
             Craft.postActionRequest('akeneo/sync/run', { type: type, sourceId: sourceId }, function(response) {
                 if (response.success) {
                     Craft.cp.displayNotice(label + ' jobs added to the queue.');
-                    window.location.href = Craft.getCpUrl('akeneo/sources');
                 } else {
                     Craft.cp.displayError(label + ' failed.');
                 }

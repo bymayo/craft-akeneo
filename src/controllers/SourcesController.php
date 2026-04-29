@@ -159,6 +159,57 @@ class SourcesController extends Controller
         ]);
     }
 
+    public function actionLog(int $sourceId): Response
+    {
+        $source = Plugin::getInstance()->sources->getSourceById($sourceId);
+
+        if (!$source) {
+            throw new NotFoundHttpException('Source not found');
+        }
+
+        $request = Craft::$app->getRequest();
+        $status = $request->getQueryParam('status');
+
+        if (!in_array($status, ['success', 'warning', 'fail'], true)) {
+            $status = null;
+        }
+
+        $page = max(1, (int) $request->getQueryParam('page', 1));
+        $perPage = 100;
+        $offset = ($page - 1) * $perPage;
+
+        $logs = Plugin::getInstance()->sync->getLogsForSource($sourceId, $status, $perPage, $offset);
+        $counts = Plugin::getInstance()->sync->getLogCountsForSource($sourceId);
+
+        return $this->renderTemplate('akeneo/sources/_log', [
+            'source' => $source,
+            'title' => $source->name,
+            'logs' => $logs,
+            'counts' => $counts,
+            'statusFilter' => $status,
+            'page' => $page,
+            'perPage' => $perPage,
+        ]);
+    }
+
+    public function actionClearLog(): ?Response
+    {
+        $this->requirePostRequest();
+
+        $sourceId = (int) Craft::$app->getRequest()->getRequiredBodyParam('sourceId');
+        $source = Plugin::getInstance()->sources->getSourceById($sourceId);
+
+        if (!$source) {
+            throw new NotFoundHttpException('Source not found');
+        }
+
+        Plugin::getInstance()->sync->clearLogsForSource($sourceId);
+
+        Craft::$app->getSession()->setNotice('Log cleared.');
+
+        return $this->redirect('akeneo/sources/' . $sourceId . '/log');
+    }
+
     public function actionFieldMapping(int $sourceId): Response
     {
         $source = Plugin::getInstance()->sources->getSourceById($sourceId);

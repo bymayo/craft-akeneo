@@ -1,5 +1,22 @@
 # Release Notes for Akeneo
 
+## 1.0.8 - 2026-04-29
+
+### Added
+- "View Log" entry in the Action dropdown on the Sources index table (previously only on source edit pages).
+- Per-product sync logging in `akeneo.log` showing `SKU - Title - Success` or `SKU - Title - Fail: <reason>` for each imported product.
+- Log tab on each source showing per-product success/warning/fail records with status filters and a clear-log action.
+- "View Log" option in the source Action dropdown to jump straight to the Log tab.
+
+### Changed
+- Refactored the Action dropdown into a shared `_sync-menu.twig` partial reused by the index table and source edit pages.
+- Added icons to the Sync Data and Sync Images menu items, and to the Sync widget buttons.
+
+## 1.0.7 - 2026-04-29
+
+### Added
+- Minor update
+
 ## 1.0.6 - 2026-04-29
 
 ### Added

@@ -1,0 +1,22 @@
+{# Renders the Akeneo sync action dropdown for a given source. #}
+{# Requires: source. JS to handle [data-sync-type] clicks must be registered once per page. #}
+{% if source.id is defined and source.id %}
+    <div class="btngroup">
+        <button type="button" class="btn" data-sync-type="all" data-source-id="{{ source.id }}"><span class="icon" style="display:inline-flex;width:14px;height:14px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('arrows-rotate') }}</span>{{ 'Sync All'|t('akeneo') }}</button>
+        <button type="button" class="btn menubtn"></button>
+        <div class="menu">
+            <ul>
+                <li><a data-sync-type="data" data-source-id="{{ source.id }}"><span class="icon" style="display:inline-flex;width:14px;height:14px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('database') }}</span>{{ 'Sync Data'|t('akeneo') }}</a></li>
+                <li><a data-sync-type="images" data-source-id="{{ source.id }}"><span class="icon" style="display:inline-flex;width:14px;height:14px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('image') }}</span>{{ 'Sync Images'|t('akeneo') }}</a></li>
+            </ul>
+            <hr role="presentation">
+            <ul>
+                <li><a data-sync-type="test" data-source-id="{{ source.id }}"><span class="icon" style="display:inline-flex;width:14px;height:14px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('square-terminal') }}</span>{{ 'Test Sync (10 products)'|t('akeneo') }}</a></li>
+            </ul>
+            <hr role="presentation">
+            <ul>
+                <li><a href="{{ url('akeneo/sources/' ~ source.id ~ '/log') }}"><span class="icon" style="display:inline-flex;width:14px;height:14px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('list') }}</span>{{ 'View Log'|t('akeneo') }}</a></li>
+            </ul>
+        </div>
+    </div>
+{% endif %}
