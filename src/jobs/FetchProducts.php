@@ -11,6 +11,8 @@ class FetchProducts extends BaseJob
 {
     public int $sourceId;
     public bool $syncImages = true;
+    public ?int $limit = null;
+    public bool $isTest = false;
 
     public function execute($queue): void
     {
@@ -29,13 +31,20 @@ class FetchProducts extends BaseJob
         $searchFilters = $sync->buildSearchFilters($source);
 
         $queryParams = !empty($searchFilters) ? ['search' => $searchFilters] : [];
-        $currentPage = $sync->getClient()->getProductApi()->listPerPage($settings->syncPageSize, true, $queryParams);
+        $pageSize = $this->limit !== null ? min($this->limit, $settings->syncPageSize) : $settings->syncPageSize;
+        $currentPage = $sync->getClient()->getProductApi()->listPerPage($pageSize, true, $queryParams);
 
         $allProducts = [];
         $pageCount = 0;
 
         do {
             $allProducts = array_merge($allProducts, $currentPage->getItems());
+
+            if ($this->limit !== null && count($allProducts) >= $this->limit) {
+                $allProducts = array_slice($allProducts, 0, $this->limit);
+                break;
+            }
+
             $currentPage = $currentPage->getNextPage();
             $pageCount++;
 
@@ -56,6 +65,7 @@ class FetchProducts extends BaseJob
             'syncImages' => $this->syncImages,
             'products' => $allProducts,
             'syncStartedAt' => $syncStartedAt,
+            'isTest' => $this->isTest,
         ]));
     }
 

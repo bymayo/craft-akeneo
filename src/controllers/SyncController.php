@@ -77,11 +77,14 @@ class SyncController extends Controller
 
         $syncImages = match ($type) {
             'data' => false,
-            'images', 'all' => true,
+            'images', 'all', 'test' => true,
             default => throw new BadRequestHttpException('Invalid sync type'),
         };
 
-        $sync->syncBySource($source, $syncImages);
+        $isTest = $type === 'test';
+        $limit = $isTest ? 10 : null;
+
+        $sync->syncBySource($source, $syncImages, $limit, $isTest);
 
         Plugin::getInstance()->sources->updateLastSyncedAt($sourceId);
 

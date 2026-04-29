@@ -63,11 +63,13 @@ class Sync extends Component
 
     }
 
-    public function syncBySource(Source $source, bool $syncImages): void
+    public function syncBySource(Source $source, bool $syncImages, ?int $limit = null, bool $isTest = false): void
     {
         Plugin::pushJob(new FetchProducts([
             'sourceId' => $source->id,
             'syncImages' => $syncImages,
+            'limit' => $limit,
+            'isTest' => $isTest,
         ]));
     }
 
@@ -255,7 +257,7 @@ class Sync extends Component
                 if (array_is_list($decoded)) {
                     // Check first element to distinguish: strings = multi-relational, objects = table rows
                     if (!empty($decoded) && is_string($decoded[0])) {
-                        $craftField = Craft::$app->getFields()->getFieldByHandle($handle);
+                        $craftField = Plugin::getInstance()->sources->resolveSourceField($source, $handle);
 
                         if ($craftField instanceof EntriesField) {
                             // Multi-entries: resolve each attribute and look up entries
@@ -292,7 +294,7 @@ class Sync extends Component
                         } else {
                             // Multi-asset field
                             if ($syncImages) {
-                                $volume = $this->getVolumeForField($handle);
+                                $volume = $this->getVolumeForField($source, $handle);
                                 $allAssetIds = [];
                                 foreach ($decoded as $assetCode) {
                                     $assetIds = $this->resolveAssetField($assetCode, $values, $volume);
@@ -310,7 +312,7 @@ class Sync extends Component
                     }
                 } else {
                     // Matrix field
-                    $matrixData = $this->resolveMatrixMapping($decoded, $values, $attributeTypes, $syncImages, $locale, $handle);
+                    $matrixData = $this->resolveMatrixMapping($source, $decoded, $values, $attributeTypes, $syncImages, $locale, $handle);
                     $element->setFieldValue($handle, $matrixData);
                 }
                 continue;
@@ -325,7 +327,7 @@ class Sync extends Component
                     continue;
                 }
 
-                $this->setElementFieldValue($element, $handle, $value);
+                $this->setElementFieldValue($source, $element, $handle, $value);
                 continue;
             }
 
@@ -334,7 +336,7 @@ class Sync extends Component
 
             if ($attrType === 'pim_catalog_asset_collection') {
                 if ($syncImages) {
-                    $volume = $this->getVolumeForField($handle);
+                    $volume = $this->getVolumeForField($source, $handle);
                     $assetIds = $this->resolveAssetField($akeneoAttr, $values, $volume);
                     if (!empty($assetIds)) {
                         $element->setFieldValue($handle, $assetIds);
@@ -354,7 +356,7 @@ class Sync extends Component
                     continue;
                 }
 
-                $this->setElementFieldValue($element, $handle, $value);
+                $this->setElementFieldValue($source, $element, $handle, $value);
             }
         }
 
@@ -375,14 +377,14 @@ class Sync extends Component
         return $element->id;
     }
 
-    private function setElementFieldValue(Element $element, string $handle, mixed $value): void
+    private function setElementFieldValue(Source $source, Element $element, string $handle, mixed $value): void
     {
         if ($handle === 'title') {
             $element->title = $value;
         } elseif ($handle === 'slug') {
             $element->slug = $value;
         } else {
-            $field = Craft::$app->getFields()->getFieldByHandle($handle);
+            $field = Plugin::getInstance()->sources->resolveSourceField($source, $handle);
 
             if ($field instanceof EntriesField) {
                 $value = $this->resolveEntriesFieldValue($field, $value);
@@ -555,7 +557,7 @@ class Sync extends Component
         return $tableData;
     }
 
-    private function resolveMatrixMapping(array $matrixData, array $values, array $attributeTypes, bool $syncImages, string $locale = 'en_GB', ?string $matrixFieldHandle = null): array
+    private function resolveMatrixMapping(Source $source, array $matrixData, array $values, array $attributeTypes, bool $syncImages, string $locale = 'en_GB', ?string $matrixFieldHandle = null): array
     {
         $result = [];
         $blockIndex = 0;
@@ -568,7 +570,7 @@ class Sync extends Component
                     // Nested array field (table rows, multi-asset, or multi-entries/categories)
                     if (is_array($fieldValue)) {
                         if (!empty($fieldValue) && is_string($fieldValue[0] ?? null)) {
-                            $nestedField = $this->getNestedField($matrixFieldHandle, $entryTypeHandle, $fieldHandle);
+                            $nestedField = $this->getNestedField($source, $matrixFieldHandle, $entryTypeHandle, $fieldHandle);
 
                             if ($nestedField instanceof EntriesField) {
                                 // Multi-entries (array of akeneo codes)
@@ -605,7 +607,7 @@ class Sync extends Component
                             } else {
                                 // Multi-asset field (array of akeneo codes)
                                 if ($syncImages) {
-                                    $volume = $matrixFieldHandle ? $this->getVolumeForField($fieldHandle, $matrixFieldHandle, $entryTypeHandle) : null;
+                                    $volume = $matrixFieldHandle ? $this->getVolumeForField($source, $fieldHandle, $matrixFieldHandle, $entryTypeHandle) : null;
                                     $allAssetIds = [];
                                     foreach ($fieldValue as $assetCode) {
                                         $assetIds = $this->resolveAssetField($assetCode, $values, $volume);
@@ -634,7 +636,7 @@ class Sync extends Component
 
                     if ($attrType === 'pim_catalog_asset_collection') {
                         if ($syncImages) {
-                            $volume = $matrixFieldHandle ? $this->getVolumeForField($fieldHandle, $matrixFieldHandle, $entryTypeHandle) : null;
+                            $volume = $matrixFieldHandle ? $this->getVolumeForField($source, $fieldHandle, $matrixFieldHandle, $entryTypeHandle) : null;
                             $assetIds = $this->resolveAssetField($fieldValue, $values, $volume);
                             if (!empty($assetIds)) {
                                 $fields[$fieldHandle] = $assetIds;
@@ -650,7 +652,7 @@ class Sync extends Component
 
                     if ($resolved !== null) {
                         // Check if this nested field is an Entries or Categories field
-                        $nestedField = $this->getNestedField($matrixFieldHandle, $entryTypeHandle, $fieldHandle);
+                        $nestedField = $this->getNestedField($source, $matrixFieldHandle, $entryTypeHandle, $fieldHandle);
 
                         if ($nestedField instanceof EntriesField) {
                             $resolved = $this->resolveEntriesFieldValue($nestedField, $resolved);
@@ -732,28 +734,9 @@ class Sync extends Component
         return $assetIds;
     }
 
-    private function getVolumeForField(string $fieldHandle, ?string $matrixFieldHandle = null, ?string $entryTypeHandle = null): ?Volume
+    private function getVolumeForField(Source $source, string $fieldHandle, ?string $matrixFieldHandle = null, ?string $entryTypeHandle = null): ?Volume
     {
-        $field = null;
-
-        if ($matrixFieldHandle && $entryTypeHandle) {
-            // Nested field inside a matrix
-            $matrixField = Craft::$app->getFields()->getFieldByHandle($matrixFieldHandle);
-            if ($matrixField instanceof \craft\fields\Matrix) {
-                foreach ($matrixField->getEntryTypes() as $entryType) {
-                    if ($entryType->handle === $entryTypeHandle) {
-                        foreach ($entryType->getFieldLayout()->getCustomFields() as $nestedField) {
-                            if ($nestedField->handle === $fieldHandle) {
-                                $field = $nestedField;
-                                break 2;
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            $field = Craft::$app->getFields()->getFieldByHandle($fieldHandle);
-        }
+        $field = $this->getNestedField($source, $matrixFieldHandle, $entryTypeHandle ?? '', $fieldHandle);
 
         if (!$field instanceof AssetsField) {
             return null;
@@ -774,29 +757,22 @@ class Sync extends Component
         return Craft::$app->getVolumes()->getVolumeByUid($parts[1]);
     }
 
-    private function getNestedField(?string $matrixFieldHandle, string $entryTypeHandle, string $fieldHandle): ?\craft\base\FieldInterface
+    private function getNestedField(Source $source, ?string $matrixFieldHandle, string $entryTypeHandle, string $fieldHandle): ?\craft\base\FieldInterface
     {
+        // Top-level field (no matrix context): resolve against the source's
+        // own field layouts, which respects Craft 5 field-layout handle
+        // overrides created during 4 → 5 field merges.
         if (!$matrixFieldHandle) {
-            return Craft::$app->getFields()->getFieldByHandle($fieldHandle);
+            return Plugin::getInstance()->sources->resolveSourceField($source, $fieldHandle);
         }
 
-        $matrixField = Craft::$app->getFields()->getFieldByHandle($matrixFieldHandle);
+        $matrixField = Plugin::getInstance()->sources->resolveSourceField($source, $matrixFieldHandle);
 
         if (!$matrixField instanceof \craft\fields\Matrix) {
             return null;
         }
 
-        foreach ($matrixField->getEntryTypes() as $entryType) {
-            if ($entryType->handle === $entryTypeHandle) {
-                foreach ($entryType->getFieldLayout()->getCustomFields() as $nestedField) {
-                    if ($nestedField->handle === $fieldHandle) {
-                        return $nestedField;
-                    }
-                }
-            }
-        }
-
-        return null;
+        return Plugin::getInstance()->sources->resolveMatrixNestedField($matrixField, $entryTypeHandle, $fieldHandle);
     }
 
     private function syncDefaultVariant(\craft\commerce\elements\Product $product, array $variantData = []): void
@@ -899,6 +875,22 @@ class Sync extends Component
 
         }
 
+        // Look for an existing asset anywhere within the Akeneo root folder
+        // (across all subfolders) before creating a new one
+        $akeneoFolderIds = array_map(
+            fn($folder) => $folder->id,
+            Craft::$app->assets->getAllDescendantFolders($akeneoSubfolder, withParent: true)
+        );
+
+        $existingAsset = Asset::find()
+            ->filename($filename)
+            ->folderId($akeneoFolderIds)
+            ->one();
+
+        if ($existingAsset) {
+            return $existingAsset;
+        }
+
         $folderId = $akeneoSubfolder->id;
 
         $subfolderName = StringHelper::toKebabCase($subfolderName);
@@ -928,15 +920,6 @@ class Sync extends Component
 
         }
 
-        $existingAsset = Asset::find()
-            ->filename($filename)
-            ->folderId($folderId)
-            ->one();
-
-        if ($existingAsset) {
-            return $existingAsset;
-        }
-
         // Download the file content
         $tempPath = AssetsHelper::tempFilePath(pathinfo($filename, PATHINFO_EXTENSION));
         file_put_contents($tempPath, file_get_contents($url));
@@ -951,8 +934,31 @@ class Sync extends Component
 
         // Save the asset
         if (!Craft::$app->elements->saveElement($asset)) {
-            Craft::error('Failed to save the asset: ' . implode(', ', $asset->getErrorSummary(true)), __METHOD__);
-            Plugin::log('Failed to save the asset: ' . implode(', ', $asset->getErrorSummary(true)));
+            $errors = $asset->getErrorSummary(true);
+            $errorMessage = implode(', ', $errors);
+
+            // Orphan-file fallback: if save failed because the file already
+            // exists on the volume but no Asset element matches it inside the
+            // Akeneo root, search the entire volume for a matching filename
+            // and adopt it. This recovers from prior partial syncs that left
+            // files on the remote filesystem without a corresponding record.
+            if (stripos($errorMessage, 'already exists') !== false) {
+                $existingAsset = Asset::find()
+                    ->filename($filename)
+                    ->volumeId($volume->id)
+                    ->one();
+
+                if ($existingAsset) {
+                    Plugin::log("Adopted existing asset '{$filename}' (id {$existingAsset->id}) found in volume '{$volume->name}' outside the Akeneo root.");
+                    return $existingAsset;
+                }
+
+                Plugin::log("Orphan file detected: '{$filename}' exists on volume '{$volume->name}' but has no Asset record. Skipping. Manually delete the file from the volume or re-index the volume to recover.");
+                return null;
+            }
+
+            Craft::error('Failed to save the asset: ' . $errorMessage, __METHOD__);
+            Plugin::log('Failed to save the asset: ' . $errorMessage);
             return null;
         }
 

@@ -100,6 +100,13 @@
             errors: source.getErrors('akeneoLocale'),
             required: true,
         }) }}
+    {% elseif localeSettingsMissing is defined and localeSettingsMissing %}
+        <div class="field">
+            <div class="heading">
+                <label>{{ 'Akeneo Locale'|t('akeneo') }}</label>
+            </div>
+            <p class="warning">{{ 'Akeneo API settings are not configured. Please {link} to connect to Akeneo before creating a source.'|t('akeneo', { link: '<a href="' ~ settingsUrl ~ '">' ~ 'add your API settings'|t('akeneo') ~ '</a>' })|raw }}</p>
+        </div>
     {% elseif localeError is defined and localeError %}
         <div class="field">
             <div class="heading">

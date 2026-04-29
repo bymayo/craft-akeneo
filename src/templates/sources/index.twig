@@ -18,6 +18,7 @@
                         <th>{{ 'Name'|t('akeneo') }}</th>
                         <th>{{ 'Content Type'|t('akeneo') }}</th>
                         <th>{{ 'Entry Type'|t('akeneo') }}</th>
+                        <th>{{ 'Est. Products'|t('akeneo') }}</th>
                         <th>{{ 'Last Synced'|t('akeneo') }}</th>
                         <th>{{ 'Action'|t('akeneo') }}</th>
                         <th></th>
@@ -30,6 +31,7 @@
                             <td><a href="{{ url(source.url) }}">{{ source.title }}</a></td>
                             <td>{{ source.contentType }}</td>
                             <td>{{ source.type }}</td>
+                            <td>{{ source.estimatedProducts is not null ? source.estimatedProducts|number : '—' }}</td>
                             <td>{{ source.lastSyncedAt ? date(source.lastSyncedAt)|timestamp : 'Never' }}</td>
                             <td class="thin">
                                 <div class="btngroup">
@@ -39,6 +41,10 @@
                                         <ul>
                                             <li><a data-sync-type="data" data-source-id="{{ source.id }}">{{ 'Sync Data'|t('akeneo') }}</a></li>
                                             <li><a data-sync-type="images" data-source-id="{{ source.id }}">{{ 'Sync Images'|t('akeneo') }}</a></li>
+                                        </ul>
+                                        <hr class="padded" role="presentation">
+                                        <ul>
+                                            <li><a data-sync-type="test" data-source-id="{{ source.id }}"><span class="icon" style="display:inline-flex;width:14px;height:14px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('square-terminal') }}</span>{{ 'Test Sync (10 products)'|t('akeneo') }}</a></li>
                                         </ul>
                                     </div>
                                 </div>

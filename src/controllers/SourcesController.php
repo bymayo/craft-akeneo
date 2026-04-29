@@ -49,6 +49,7 @@ class SourcesController extends Controller
                 'contentType' => $typePrefix,
                 'type' => $typeLabel,
                 'lastSyncedAt' => $source->lastSyncedAt,
+                'estimatedProducts' => Plugin::getInstance()->sources->getEstimatedProductCount($source),
             ];
         }
 
@@ -426,20 +427,35 @@ class SourcesController extends Controller
         }
         $params['siteOptions'] = $siteOptions;
 
-        try {
-            $locales = Plugin::getInstance()->sources->getAkeneoLocales();
-            $localeOptions = [];
+        $settings = Plugin::getInstance()->getSettings();
+        $missingSettings = false;
 
-            foreach ($locales as $locale) {
-                $localeOptions[] = [
-                    'label' => $locale['label'],
-                    'value' => $locale['code'],
-                ];
+        foreach (['apiUrl', 'clientId', 'secretKey', 'username', 'password'] as $key) {
+            if (empty(Craft::parseEnv($settings->{$key}))) {
+                $missingSettings = true;
+                break;
             }
+        }
 
-            $params['localeOptions'] = $localeOptions;
-        } catch (\Throwable $e) {
-            $params['localeError'] = $e->getMessage();
+        if ($missingSettings) {
+            $params['localeSettingsMissing'] = true;
+            $params['settingsUrl'] = \craft\helpers\UrlHelper::cpUrl('akeneo/settings');
+        } else {
+            try {
+                $locales = Plugin::getInstance()->sources->getAkeneoLocales();
+                $localeOptions = [];
+
+                foreach ($locales as $locale) {
+                    $localeOptions[] = [
+                        'label' => $locale['label'],
+                        'value' => $locale['code'],
+                    ];
+                }
+
+                $params['localeOptions'] = $localeOptions;
+            } catch (\Throwable $e) {
+                $params['localeError'] = $e->getMessage();
+            }
         }
 
         return $params;

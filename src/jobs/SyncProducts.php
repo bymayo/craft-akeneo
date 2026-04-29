@@ -15,6 +15,7 @@ class SyncProducts extends BaseBatchedJob
     public array $products = [];
     public int $batchSize = 50;
     public string $syncStartedAt = '';
+    public bool $isTest = false;
 
     protected function loadData(): Batchable
     {
@@ -35,6 +36,10 @@ class SyncProducts extends BaseBatchedJob
 
     protected function after(): void
     {
+        if ($this->isTest) {
+            return;
+        }
+
         $source = Plugin::getInstance()->sources->getSourceById($this->sourceId);
 
         if (!$source || $source->orphanedEntryAction === 'doNothing') {

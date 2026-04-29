@@ -19,6 +19,7 @@ Akeneo is a Craft CMS plugin that syncs products and data from [Akeneo PIM](http
 - **Per-Source Locale** - Choose which Akeneo locale to pull attribute values from per source (e.g. `en_GB`, `en_US`)
 - **Multi-Site Support** - Import entries into a specific Craft site per source
 - **Orphaned Entry Handling** - Automatically disable or delete Craft entries that no longer exist in Akeneo after a sync
+- **Test Sync** - Try a quick 10-product sync to check your mappings, filters and volumes before running the real thing
 - **Custom Queue** - Optionally run sync jobs on a dedicated queue with configurable priority and TTR
 - **Permissions** - Control access to sources, dashboard widgets and cache clearing with granular user permissions
 - **Dashboard Widget** - Trigger syncs directly from the dashboard with options for all data, data only, or images only
@@ -91,6 +92,14 @@ Supported field types:
 - Entries (auto-creates missing entries)
 - Categories (auto-creates missing categories)
 
+> **SuperTable isn't supported.** If you're upgrading from Craft 4 and still using SuperTable, switch those fields over to Matrix before setting up your mappings:
+>
+> ```bash
+> ./craft super-table/migrate/index
+> ```
+>
+> The plugin only walks native Matrix fields, so any asset fields tucked inside a SuperTable will fail with "No volume provided for asset..." until they're migrated.
+
 #### Commerce Variant Fields
 
 When the source type is a Commerce product type, the following special fields can be mapped to sync the default variant:
@@ -103,9 +112,24 @@ When the source type is a Commerce product type, the following special fields ca
 
 Syncs can be triggered from:
 
-- **Source list** - Sync All, Sync Data, or Sync Images buttons per source
+- **Source list** - Sync All, Sync Data, Sync Images, or Test Sync (10 products only) buttons per source
 - **Dashboard widget** - Add the Akeneo Product Sync widget
 - **Console commands** - See below
+
+#### Test Sync
+
+**Test Sync** is a quick way to check your setup before kicking off a full import. It works just like **Sync All**, with two key differences:
+
+- **Only pulls 10 products.** It grabs the first page from Akeneo and stops after 10, so you get a fast result without waiting on the full catalogue.
+- **Won't touch your existing entries.** A normal sync runs the Orphaned Entry Action afterwards, which would disable or delete anything not in the batch. Since a test only pulls 10 products, that step is skipped — your live entries are left alone.
+
+It's handy when you want to:
+
+- Double-check your field mappings are landing in the right places.
+- See which products match after tweaking your filters.
+- Debug a sync issue (image volumes, value mappings, matrix blocks, etc.) without sitting through thousands of products.
+
+You'll find Test Sync in the Action dropdown on both the **Sources index** and each **Source edit page**, marked with a terminal icon.
 
 ## Console Commands
 
@@ -180,6 +204,10 @@ return [
 | `customQueue` | `false` | Run sync jobs on a dedicated queue instead of the default Craft queue |
 | `jobPriority` | `1024` | Priority for sync jobs. Lower numbers run first. Only applies to the default queue |
 | `jobTtr` | `300` | Maximum time (in seconds) a job can run before it is retried |
+
+## Upgrading from Craft 4
+
+Coming from Craft 4 with SuperTable fields? You'll need to convert those over to Matrix before your first sync — see the note under **Setup → Map Fields** for details.
 
 ## Support
 

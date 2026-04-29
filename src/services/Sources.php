@@ -14,6 +14,122 @@ use bymayo\akeneo\records\FieldMappingRecord;
 
 class Sources extends Component
 {
+    /**
+     * Resolve a field by its layout-level handle within the source's field
+     * layouts. Necessary for Craft 5 — when fields share settings, Craft 4→5
+     * upgrades may merge multiple fields into one underlying record while
+     * preserving each layout's original handle as a field-layout override.
+     * `Craft::$app->getFields()->getFieldByHandle()` only knows about the
+     * underlying field's global handle, so it returns null for handles that
+     * exist only as layout overrides. This walks the source's entry-type /
+     * product-type field layouts and matches against the layout handles that
+     * `getCustomFields()` exposes.
+     */
+    public function resolveSourceField(Source $source, string $handle): ?\craft\base\FieldInterface
+    {
+        foreach ($this->getSourceFieldLayouts($source) as $layout) {
+            foreach ($layout->getCustomFields() as $field) {
+                if ($field->handle === $handle) {
+                    return $field;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public function resolveMatrixNestedField(\craft\fields\Matrix $matrixField, string $entryTypeHandle, string $fieldHandle): ?\craft\base\FieldInterface
+    {
+        foreach ($matrixField->getEntryTypes() as $entryType) {
+            if ($entryType->handle !== $entryTypeHandle) {
+                continue;
+            }
+
+            foreach ($entryType->getFieldLayout()->getCustomFields() as $nestedField) {
+                if ($nestedField->handle === $fieldHandle) {
+                    return $nestedField;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function getSourceFieldLayouts(Source $source): array
+    {
+        $layouts = [];
+
+        if ($source->type === 'section') {
+            $section = Craft::$app->getEntries()->getSectionById($source->typeId);
+            if ($section) {
+                foreach ($section->getEntryTypes() as $entryType) {
+                    $layouts[] = $entryType->getFieldLayout();
+                }
+            }
+        } elseif ($source->type === 'commerceProductType') {
+            $commercePlugin = Craft::$app->plugins->getPlugin('commerce');
+            if ($commercePlugin) {
+                $productType = $commercePlugin->getProductTypes()->getProductTypeById($source->typeId);
+                if ($productType) {
+                    $layouts[] = $productType->getFieldLayout();
+                    if (method_exists($productType, 'getVariantFieldLayout')) {
+                        $layouts[] = $productType->getVariantFieldLayout();
+                    }
+                }
+            }
+        }
+
+        return $layouts;
+    }
+
+    public function getEstimatedProductCount(Source $source): ?int
+    {
+        $settings = Plugin::getInstance()->getSettings();
+
+        foreach (['apiUrl', 'clientId', 'secretKey', 'username', 'password'] as $key) {
+            if (empty(Craft::parseEnv($settings->{$key}))) {
+                return null;
+            }
+        }
+
+        if (!$source->id) {
+            return null;
+        }
+
+        $cacheKey = $this->_estimatedProductCountCacheKey($source->id);
+        $cached = Craft::$app->getCache()->get($cacheKey);
+
+        if ($cached !== false) {
+            return $cached === '__null__' ? null : (int) $cached;
+        }
+
+        try {
+            $sync = Plugin::getInstance()->sync;
+            $searchFilters = $sync->buildSearchFilters($source);
+            $queryParams = !empty($searchFilters) ? ['search' => $searchFilters] : [];
+
+            $page = $sync->getClient()->getProductApi()->listPerPage(1, true, $queryParams);
+            $count = $page->getCount();
+
+            Craft::$app->getCache()->set($cacheKey, $count ?? '__null__');
+
+            return $count;
+        } catch (\Throwable $e) {
+            Plugin::log("Failed to estimate product count for source '{$source->name}': " . $e->getMessage());
+            return null;
+        }
+    }
+
+    public function invalidateEstimatedProductCount(int $sourceId): void
+    {
+        Craft::$app->getCache()->delete($this->_estimatedProductCountCacheKey($sourceId));
+    }
+
+    private function _estimatedProductCountCacheKey(int $sourceId): string
+    {
+        return 'akeneo_source_estimated_count_' . $sourceId;
+    }
+
     public function getAllSources(): array
     {
         $records = SourceRecord::find()
@@ -80,6 +196,8 @@ class Sources extends Component
             throw $e;
         }
 
+        $this->invalidateEstimatedProductCount($source->id);
+
         return true;
     }
 
@@ -90,6 +208,8 @@ class Sources extends Component
         if (!$record) {
             return false;
         }
+
+        $this->invalidateEstimatedProductCount($id);
 
         return (bool) $record->delete();
     }

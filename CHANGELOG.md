@@ -1,5 +1,21 @@
 # Release Notes for Akeneo
 
+# 1.0.5 - 2026-04-29
+
+### Added
+- "Test Sync (10 products)" option that runs a quick sync without touching existing entries via the Orphaned Entry Action.
+- Estimated product count column on the Sources index, cached per source and refreshed when the source is saved.
+- Friendly "Add your API settings" prompt on the source edit page when API credentials are missing.
+- Friendly "Add your API settings" prompt on the dashboard SyncWidget when API credentials are missing.
+
+### Changed
+- Existing-asset lookup now searches all subfolders of the Asset Folder, so re-syncs reuse previously imported assets.
+
+### Fixed
+- Asset save failures now check the volume for a matching file and reuse the existing Asset record where possible.
+- Field resolution respects Craft 5 layout-level handle overrides, fixing spurious "No volume provided" errors after Craft 4 upgrades.
+- Dashboard SyncWidget template no longer throws a Twig error when rendered without its expected variables.
+
 # 1.0.4 - 2026-02-18
 ### Changed
 - Settings tabs to use Craft's own tab system

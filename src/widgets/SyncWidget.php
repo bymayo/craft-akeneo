@@ -52,6 +52,16 @@ class SyncWidget extends Widget
 
     public function getBodyHtml(): ?string
     {
+        $settings = Plugin::getInstance()->getSettings();
+        $settingsMissing = false;
+
+        foreach (['apiUrl', 'clientId', 'secretKey', 'username', 'password'] as $key) {
+            if (empty(Craft::parseEnv($settings->{$key}))) {
+                $settingsMissing = true;
+                break;
+            }
+        }
+
         if ($this->sourceId) {
             $source = Plugin::getInstance()->sources->getSourceById($this->sourceId);
             $sources = $source ? [$source] : [];
@@ -61,6 +71,8 @@ class SyncWidget extends Widget
 
         return Craft::$app->view->renderTemplate('akeneo/widgets/SyncWidget_body', [
             'sources' => $sources,
+            'settingsMissing' => $settingsMissing,
+            'settingsUrl' => \craft\helpers\UrlHelper::cpUrl('akeneo/settings'),
         ]);
     }
 }
