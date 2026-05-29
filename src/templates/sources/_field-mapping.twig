@@ -281,7 +281,7 @@
                                                                 {% endif %}
                                                                 <tr>
                                                                     <td style="vertical-align: middle; white-space: nowrap;">
-                                                                        {{ nestedField.name }}
+                                                                        <strong>{{ nestedField.name }}</strong>
                                                                         <br>
                                                                         <code style="font-size: 10px;">{{ nestedField.handle }}</code>
                                                                     </td>
@@ -310,7 +310,7 @@
                                                                 {% set nestedRelValues = nestedValue is iterable ? nestedValue : (nestedValue ? [nestedValue] : []) %}
                                                                 <tr>
                                                                     <td style="vertical-align: middle; white-space: nowrap;">
-                                                                        {{ nestedField.name }}
+                                                                        <strong>{{ nestedField.name }}</strong>
                                                                         <br>
                                                                         <code style="font-size: 10px;">{{ nestedField.handle }}</code>
                                                                     </td>
@@ -330,7 +330,7 @@
                                                                 {% if not nestedField.supported %}
                                                                     <tr>
                                                                         <td style="vertical-align: middle; white-space: nowrap;">
-                                                                            {{ nestedField.name }}
+                                                                            <strong>{{ nestedField.name }}</strong>
                                                                             <br>
                                                                             <code style="font-size: 10px;">{{ nestedField.handle }}</code>
                                                                         </td>
@@ -345,7 +345,7 @@
                                                                     {% set nestedSelectVal = nestedIsStatic ? '__static__' : (nestedValue ?: '__none__') %}
                                                                     <tr>
                                                                         <td style="vertical-align: middle; white-space: nowrap;">
-                                                                            {{ nestedField.name }}
+                                                                            <strong>{{ nestedField.name }}</strong>
                                                                             <br>
                                                                             <code style="font-size: 10px;">{{ nestedField.handle }}</code>
                                                                         </td>
@@ -689,7 +689,7 @@
                 } else if (field.type === 'asset') {
                     var isMulti = !field.maxRelations || field.maxRelations !== 1;
                     html += '<tr>';
-                    html += '<td style="vertical-align: middle; white-space: nowrap;">' + field.name + '<br><code style="font-size: 10px;">' + field.handle + '</code></td>';
+                    html += '<td style="vertical-align: middle; white-space: nowrap;"><strong>' + field.name + '</strong><br><code style="font-size: 10px;">' + field.handle + '</code></td>';
                     if (isMulti) {
                         html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneoMulti][]" multiple data-max-items="' + (field.maxRelations || '') + '" style="display:none">' + akeneoAssetOptionsHtml + '</select></td>';
                     } else {
@@ -699,18 +699,18 @@
                     html += '</tr>';
                 } else if ((field.type === 'entries' || field.type === 'categories') && field.maxRelations !== 1) {
                     html += '<tr>';
-                    html += '<td style="vertical-align: middle; white-space: nowrap;">' + field.name + '<br><code style="font-size: 10px;">' + field.handle + '</code></td>';
+                    html += '<td style="vertical-align: middle; white-space: nowrap;"><strong>' + field.name + '</strong><br><code style="font-size: 10px;">' + field.handle + '</code></td>';
                     html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneoMulti][]" multiple data-max-items="' + (field.maxRelations || '') + '" style="display:none">' + akeneoOptionsHtml + '</select></td>';
                     html += '<td></td>';
                     html += '</tr>';
                 } else if (!field.supported) {
                     html += '<tr>';
-                    html += '<td style="vertical-align: middle; white-space: nowrap;">' + field.name + '<br><code style="font-size: 10px;">' + field.handle + '</code></td>';
+                    html += '<td style="vertical-align: middle; white-space: nowrap;"><strong>' + field.name + '</strong><br><code style="font-size: 10px;">' + field.handle + '</code></td>';
                     html += '<td colspan="2"><span class="light">Not supported</span></td>';
                     html += '</tr>';
                 } else {
                     html += '<tr>';
-                    html += '<td style="vertical-align: middle; white-space: nowrap;">' + field.name + '<br><code style="font-size: 10px;">' + field.handle + '</code></td>';
+                    html += '<td style="vertical-align: middle; white-space: nowrap;"><strong>' + field.name + '</strong><br><code style="font-size: 10px;">' + field.handle + '</code></td>';
                     html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneo]" style="display:none">' + akeneoOptionsHtml + '</select></td>';
                     html += '<td><input type="text" name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][static]" value="" class="fullwidth text matrix-static-value-input" placeholder="Enter value…" disabled></td>';
                     html += '</tr>';
