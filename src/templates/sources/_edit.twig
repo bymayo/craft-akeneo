@@ -142,16 +142,16 @@
             <div id="filters-container">
                 {% for filter in existingFilters %}
                     <div class="filter-row" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-                        <input type="text" name="filters[{{ loop.index0 }}][attribute]" value="{{ filter.attribute }}" class="text" placeholder="Attribute code" style="flex: 2;">
-                        <div style="flex: 1;">
-                            <select name="filters[{{ loop.index0 }}][operator]" class="text">
+                        <input type="text" name="filters[{{ loop.index0 }}][attribute]" value="{{ filter.attribute }}" class="text" placeholder="Attribute code" style="flex: 0 0 33%;">
+                        <div style="flex: 0 0 180px;">
+                            <select name="filters[{{ loop.index0 }}][operator]" class="text" style="width: 100%;">
                                 {% for op in ['=', '!=', '<', '>', '<=', '>=', 'IN', 'NOT IN', 'CONTAINS', 'DOES NOT CONTAIN', 'STARTS WITH', 'EMPTY', 'NOT EMPTY', 'BETWEEN', 'NOT BETWEEN'] %}
                                     <option value="{{ op }}" {{ filter.operator == op ? 'selected' }}>{{ op }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <input type="text" name="filters[{{ loop.index0 }}][value]" value="{{ filter.value }}" class="text" placeholder="Value" style="flex: 2;">
-                        <a class="delete icon filter-row-delete" title="Remove"></a>
+                        <input type="text" name="filters[{{ loop.index0 }}][value]" value="{{ filter.value }}" class="text" placeholder="Value" style="flex: 1;">
+                        <a class="delete icon filter-row-delete" title="Remove" style="margin-left: auto;"></a>
                     </div>
                 {% endfor %}
             </div>
@@ -166,6 +166,29 @@
 
         var operators = {{ ['=', '!=', '<', '>', '<=', '>=', 'IN', 'NOT IN', 'CONTAINS', 'DOES NOT CONTAIN', 'STARTS WITH', 'EMPTY', 'NOT EMPTY', 'BETWEEN', 'NOT BETWEEN']|json_encode|raw }};
 
+        // Operators that don't take a value.
+        var noValueOperators = ['EMPTY', 'NOT EMPTY'];
+
+        function updateValueVisibility(row) {
+            var operatorSelect = row.querySelector('select[name*="[operator]"]');
+            var valueInput = row.querySelector('input[name*="[value]"]');
+            if (!operatorSelect || !valueInput) return;
+
+            var hide = noValueOperators.indexOf(operatorSelect.value) !== -1;
+            valueInput.style.display = hide ? 'none' : '';
+            if (hide) {
+                valueInput.value = '';
+            }
+        }
+
+        container.querySelectorAll('.filter-row').forEach(updateValueVisibility);
+
+        container.addEventListener('change', function(e) {
+            if (e.target.matches('select[name*="[operator]"]')) {
+                updateValueVisibility(e.target.closest('.filter-row'));
+            }
+        });
+
         addBtn.addEventListener('click', function() {
             var idx = container.querySelectorAll('.filter-row').length;
             var div = document.createElement('div');
@@ -177,12 +200,13 @@
                 optionsHtml += '<option value="' + op + '">' + op + '</option>';
             });
 
-            div.innerHTML = '<input type="text" name="filters[' + idx + '][attribute]" value="" class="text" placeholder="Attribute code" style="flex: 2;">'
-                + '<div style="flex: 1;"><select name="filters[' + idx + '][operator]" class="text">' + optionsHtml + '</select></div>'
-                + '<input type="text" name="filters[' + idx + '][value]" value="" class="text" placeholder="Value" style="flex: 2;">'
-                + '<a class="delete icon filter-row-delete" title="Remove"></a>';
+            div.innerHTML = '<input type="text" name="filters[' + idx + '][attribute]" value="" class="text" placeholder="Attribute code" style="flex: 0 0 33%;">'
+                + '<div style="flex: 0 0 180px;"><select name="filters[' + idx + '][operator]" class="text" style="width: 100%;">' + optionsHtml + '</select></div>'
+                + '<input type="text" name="filters[' + idx + '][value]" value="" class="text" placeholder="Value" style="flex: 1;">'
+                + '<a class="delete icon filter-row-delete" title="Remove" style="margin-left: auto;"></a>';
 
             container.appendChild(div);
+            updateValueVisibility(div);
         });
 
         document.addEventListener('click', function(e) {
