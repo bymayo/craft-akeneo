@@ -1,5 +1,21 @@
 # Release Notes for Akeneo
 
+## 1.0.9 - 2026-05-29
+
+### Added
+- CKEditor fields are now supported as field mapping targets.
+- Field mapping table now groups fields by their field layout tab, separated by a full-width divider.
+
+### Changed
+- Field mapping rows now show bold field names with smaller handles consistently across top-level fields, Table columns, and Matrix nested fields.
+- Field mapping table now uses a fixed column layout so the Akeneo Attribute dropdown and Static Value fields stay a consistent width; dropdowns and selects now fill their column.
+- Darkened the nested mapping table headers and tidied the row hover styling so headers stay distinct on hover.
+- Restyled the row delete button as a white bordered button anchored to the top right.
+- Product Filters: the operator dropdown is now a fixed width with the attribute fixed at 33% and the value taking the remaining space, and the remove button stays on the right.
+
+### Fixed
+- Product Filters now hide the value field for operators that don't take a value (`EMPTY`, `NOT EMPTY`).
+
 ## 1.0.8 - 2026-04-29
 
 ### Added
