@@ -344,6 +344,9 @@ class Sources extends Component
         \craft\fields\Assets::class,
         \craft\fields\Entries::class,
         \craft\fields\Categories::class,
+        // Optional plugin field — `::class` is a compile-time string and does not
+        // autoload, so this is safe when craftcms/ckeditor isn't installed.
+        \craft\ckeditor\Field::class,
     ];
 
     private function isFieldSupported($field): bool
