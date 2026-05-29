@@ -359,6 +359,28 @@ class Sources extends Component
         return false;
     }
 
+    /**
+     * Collect custom fields from a field layout, keyed by handle, while
+     * recording the layout tab name each field first appears under.
+     */
+    private function collectLayoutFields(\craft\models\FieldLayout $fieldLayout, array &$sourceCustomFields, array &$fieldTabs): void
+    {
+        foreach ($fieldLayout->getTabs() as $tab) {
+            foreach ($tab->getElements() as $element) {
+                if (!$element instanceof \craft\fieldlayoutelements\CustomField) {
+                    continue;
+                }
+
+                $field = $element->getField();
+
+                if ($field !== null && !isset($sourceCustomFields[$field->handle])) {
+                    $sourceCustomFields[$field->handle] = $field;
+                    $fieldTabs[$field->handle] = $tab->name;
+                }
+            }
+        }
+    }
+
     public function getCraftFieldsForSource(Source $source): array
     {
         $fields = [
@@ -372,16 +394,16 @@ class Sources extends Component
             $fields[] = ['handle' => 'price', 'name' => 'Price', 'type' => 'field', 'supported' => true, 'fieldType' => 'Price', 'group' => 'variant'];
         }
 
-        // Collect custom fields from the source's field layouts
+        // Collect custom fields from the source's field layouts, tracking
+        // which field layout tab each field belongs to.
         $sourceCustomFields = [];
+        $fieldTabs = [];
 
         if ($source->type === 'section') {
             $section = Craft::$app->getEntries()->getSectionById($source->typeId);
             if ($section) {
                 foreach ($section->getEntryTypes() as $entryType) {
-                    foreach ($entryType->getFieldLayout()->getCustomFields() as $customField) {
-                        $sourceCustomFields[$customField->handle] = $customField;
-                    }
+                    $this->collectLayoutFields($entryType->getFieldLayout(), $sourceCustomFields, $fieldTabs);
                 }
             }
         } elseif ($source->type === 'commerceProductType') {
@@ -389,13 +411,9 @@ class Sources extends Component
             if ($commercePlugin) {
                 $productType = $commercePlugin->getProductTypes()->getProductTypeById($source->typeId);
                 if ($productType) {
-                    foreach ($productType->getFieldLayout()->getCustomFields() as $customField) {
-                        $sourceCustomFields[$customField->handle] = $customField;
-                    }
+                    $this->collectLayoutFields($productType->getFieldLayout(), $sourceCustomFields, $fieldTabs);
                     if (method_exists($productType, 'getVariantFieldLayout')) {
-                        foreach ($productType->getVariantFieldLayout()->getCustomFields() as $customField) {
-                            $sourceCustomFields[$customField->handle] = $customField;
-                        }
+                        $this->collectLayoutFields($productType->getVariantFieldLayout(), $sourceCustomFields, $fieldTabs);
                     }
                 }
             }
@@ -408,6 +426,7 @@ class Sources extends Component
                 'type' => 'field',
                 'supported' => $this->isFieldSupported($field),
                 'fieldType' => $field::displayName(),
+                'tab' => $fieldTabs[$field->handle] ?? null,
             ];
 
             if ($field instanceof \craft\fields\Table) {

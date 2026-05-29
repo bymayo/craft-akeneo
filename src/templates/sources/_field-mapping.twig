@@ -44,6 +44,15 @@
         .matrix-entry-row table.data tbody tr:hover td {
             background-color: transparent !important;
         }
+        .akeneo-section-heading td,
+        .akeneo-section-heading:hover td {
+            border-top: 1px solid var(--gray-200) !important;
+            padding-top: 16px !important;
+            background-color: transparent !important;
+        }
+        .akeneo-section-heading td strong {
+            font-size: 16px;
+        }
         .table-mapping-row > .delete.icon,
         .matrix-entry-row > .delete.icon {
             z-index: 1;
@@ -111,11 +120,14 @@
                 {% set idx = loop.index0 %}
                 {% set currentValue = mappingsByHandle[field.handle] ?? '' %}
 
-                {% if idx > 0 and (field.group ?? 'custom') != (craftFields[idx - 1].group ?? 'custom') %}
-                    <tr><td colspan="4" style="padding: 0;"><hr style="margin: 8px 0;"></td></tr>
-                    {% if (field.group ?? '') == 'variant' %}
-                        <tr><td colspan="4"><strong>Variant</strong></td></tr>
-                    {% endif %}
+                {% set prevTab = idx > 0 ? (craftFields[idx - 1].tab ?? null) : null %}
+                {% set groupChanged = idx > 0 and (field.group ?? 'custom') != (craftFields[idx - 1].group ?? 'custom') %}
+                {% set tabChanged = (field.tab ?? null) and field.tab != prevTab %}
+
+                {% if groupChanged and (field.group ?? '') == 'variant' %}
+                    <tr class="akeneo-section-heading"><td colspan="4"><strong>Variant</strong></td></tr>
+                {% elseif tabChanged %}
+                    <tr class="akeneo-section-heading"><td colspan="4"><strong>Tab - {{ field.tab }}</strong></td></tr>
                 {% endif %}
 
                 {% if field.type == 'table' %}
@@ -152,7 +164,7 @@
                                                         {% set colValue = colAkeneo == '__static__' or (colStatic and not colAkeneo) ? '__static__' : (colAkeneo ?: '__none__') %}
                                                         <tr>
                                                             <td style="vertical-align: middle; white-space: nowrap;">
-                                                                {{ col.heading }}
+                                                                <strong>{{ col.heading }}</strong><br><code style="font-size: 10px;">{{ col.handle }}</code>
                                                             </td>
                                                             <td>
                                                                 {{ forms.selectize({
@@ -237,7 +249,7 @@
                                                                                                     {% set colValue = colAkeneo == '__static__' or (colStatic and not colAkeneo) ? '__static__' : (colAkeneo ?: '__none__') %}
                                                                                                     <tr>
                                                                                                         <td style="vertical-align: middle; white-space: nowrap;">
-                                                                                                            {{ col.heading }}
+                                                                                                            <strong>{{ col.heading }}</strong><br><code style="font-size: 10px;">{{ col.handle }}</code>
                                                                                                         </td>
                                                                                                         <td>
                                                                                                             {{ forms.selectize({
@@ -626,7 +638,7 @@
 
             for (var colId in columns) {
                 html += '<tr>';
-                html += '<td style="vertical-align: middle; white-space: nowrap;">' + columns[colId].heading + '</td>';
+                html += '<td style="vertical-align: middle; white-space: nowrap;"><strong>' + columns[colId].heading + '</strong><br><code style="font-size: 10px;">' + columns[colId].handle + '</code></td>';
                 html += '<td><select name="' + namePrefix + '[' + colId + '][akeneo]" style="display:none">' + akeneoOptionsHtml + '</select></td>';
                 html += '<td><input type="text" name="' + namePrefix + '[' + colId + '][static]" value="" class="fullwidth text" placeholder="Enter value…"></td>';
                 html += '</tr>';
