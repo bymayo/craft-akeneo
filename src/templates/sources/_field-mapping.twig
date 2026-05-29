@@ -47,11 +47,71 @@
         .akeneo-section-heading td,
         .akeneo-section-heading:hover td {
             border-top: 1px solid var(--gray-200) !important;
-            padding-top: 16px !important;
+            padding-top: 8px !important;
+            padding-bottom: 0 !important;
             background-color: transparent !important;
         }
         .akeneo-section-heading td strong {
             font-size: 16px;
+        }
+        .akeneo-mapping-table,
+        .table-mapping-row table.data,
+        .matrix-entry-row table.data {
+            table-layout: fixed;
+        }
+        .akeneo-mapping-table > thead > tr > th:nth-child(1),
+        .akeneo-mapping-table > tbody > tr > td:nth-child(1) {
+            width: 22%;
+        }
+        .akeneo-mapping-table > thead > tr > th:nth-child(2) {
+            width: 13%;
+        }
+        .akeneo-mapping-table > thead > tr > th:nth-child(3) {
+            width: 32%;
+        }
+        .akeneo-mapping-table > thead > tr > th:nth-child(4) {
+            width: 33%;
+        }
+        .table-mapping-row table.data thead th:nth-child(1),
+        .matrix-entry-row table.data thead th:nth-child(1) {
+            width: 24%;
+        }
+        .table-mapping-row table.data thead th:nth-child(2),
+        .table-mapping-row table.data thead th:nth-child(3),
+        .matrix-entry-row table.data thead th:nth-child(2),
+        .matrix-entry-row table.data thead th:nth-child(3) {
+            width: 38%;
+        }
+        /* Craft sets .selectize.select:not(.fullwidth) to a fixed width: 25cm,
+           which makes the single dropdowns narrower than the cell. Override it
+           so they fill their column like the multiselects do. */
+        .akeneo-mapping-table td .selectize.select,
+        .table-mapping-row td .selectize.select,
+        .matrix-entry-row td .selectize.select {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        .akeneo-mapping-table td .selectize-control,
+        .table-mapping-row td .selectize-control,
+        .matrix-entry-row td .selectize-control {
+            width: 100%;
+            max-width: none;
+            min-width: 0;
+        }
+        .akeneo-mapping-table .selectize-control .selectize-input,
+        .table-mapping-row .selectize-control .selectize-input,
+        .matrix-entry-row .selectize-control .selectize-input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .akeneo-mapping-table td .text,
+        .table-mapping-row td .text,
+        .matrix-entry-row td .text,
+        .akeneo-mapping-table td select,
+        .table-mapping-row td select,
+        .matrix-entry-row td select {
+            width: 100%;
+            box-sizing: border-box;
         }
         .table-mapping-row > .delete.icon,
         .matrix-entry-row > .delete.icon {
@@ -106,7 +166,7 @@
         {% set mappingsByHandle = mappingsByHandle|merge({ (mapping.craftFieldHandle): mapping.akeneoAttribute }) %}
     {% endfor %}
 
-    <table class="data fullwidth">
+    <table class="data fullwidth akeneo-mapping-table">
         <thead>
             <tr>
                 <th>Field</th>
@@ -127,7 +187,7 @@
                 {% if groupChanged and (field.group ?? '') == 'variant' %}
                     <tr class="akeneo-section-heading"><td colspan="4"><strong>Variant</strong></td></tr>
                 {% elseif tabChanged %}
-                    <tr class="akeneo-section-heading"><td colspan="4"><strong>Tab - {{ field.tab }}</strong></td></tr>
+                    <tr class="akeneo-section-heading"><td colspan="4"></td></tr>
                 {% endif %}
 
                 {% if field.type == 'table' %}
