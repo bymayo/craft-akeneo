@@ -243,6 +243,7 @@ class SourcesController extends Controller
 
         return $this->renderTemplate('akeneo/sources/_console-commands', [
             'source' => $source,
+            'sourceHasFailures' => Plugin::getInstance()->sync->sourceHasFailures($source->id),
         ]);
     }
 
@@ -276,6 +277,7 @@ class SourcesController extends Controller
             'statusFilter' => $status,
             'page' => $page,
             'perPage' => $perPage,
+            'sourceHasFailures' => $counts['fail'] > 0,
         ]);
     }
 
@@ -324,6 +326,7 @@ class SourcesController extends Controller
             'craftFields' => $craftFields,
             'akeneoAttributes' => $akeneoAttributes,
             'akeneoError' => $akeneoError,
+            'sourceHasFailures' => Plugin::getInstance()->sync->sourceHasFailures($source->id),
         ]);
     }
 
@@ -538,6 +541,7 @@ class SourcesController extends Controller
             'source' => $source,
             'title' => $source->id ? $source->name : 'Create a new source',
             'typeOptions' => Plugin::getInstance()->sources->getTypeOptions(),
+            'sourceHasFailures' => $source->id ? Plugin::getInstance()->sync->sourceHasFailures($source->id) : false,
         ];
 
         if ($source->id && $source->type && $source->typeId) {
