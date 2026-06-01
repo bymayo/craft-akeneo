@@ -361,9 +361,9 @@ class Sources extends Component
 
     /**
      * Collect custom fields from a field layout, keyed by handle, while
-     * recording the layout tab name each field first appears under.
+     * recording the layout tab name and whether each field is required.
      */
-    private function collectLayoutFields(\craft\models\FieldLayout $fieldLayout, array &$sourceCustomFields, array &$fieldTabs): void
+    private function collectLayoutFields(\craft\models\FieldLayout $fieldLayout, array &$sourceCustomFields, array &$fieldTabs, array &$fieldRequired): void
     {
         foreach ($fieldLayout->getTabs() as $tab) {
             foreach ($tab->getElements() as $element) {
@@ -376,6 +376,7 @@ class Sources extends Component
                 if ($field !== null && !isset($sourceCustomFields[$field->handle])) {
                     $sourceCustomFields[$field->handle] = $field;
                     $fieldTabs[$field->handle] = $tab->name;
+                    $fieldRequired[$field->handle] = (bool) $element->required;
                 }
             }
         }
@@ -384,8 +385,8 @@ class Sources extends Component
     public function getCraftFieldsForSource(Source $source): array
     {
         $fields = [
-            ['handle' => 'title', 'name' => 'Title', 'type' => 'field', 'supported' => true, 'fieldType' => 'Title', 'group' => 'element'],
-            ['handle' => 'slug', 'name' => 'Slug', 'type' => 'field', 'supported' => true, 'fieldType' => 'Slug', 'group' => 'element'],
+            ['handle' => 'title', 'name' => 'Title', 'type' => 'field', 'supported' => true, 'fieldType' => 'Title', 'group' => 'element', 'required' => true],
+            ['handle' => 'slug', 'name' => 'Slug', 'type' => 'field', 'supported' => true, 'fieldType' => 'Slug', 'group' => 'element', 'required' => true],
         ];
 
         if ($source->type === 'commerceProductType') {
@@ -398,12 +399,13 @@ class Sources extends Component
         // which field layout tab each field belongs to.
         $sourceCustomFields = [];
         $fieldTabs = [];
+        $fieldRequired = [];
 
         if ($source->type === 'section') {
             $section = Craft::$app->getEntries()->getSectionById($source->typeId);
             if ($section) {
                 foreach ($section->getEntryTypes() as $entryType) {
-                    $this->collectLayoutFields($entryType->getFieldLayout(), $sourceCustomFields, $fieldTabs);
+                    $this->collectLayoutFields($entryType->getFieldLayout(), $sourceCustomFields, $fieldTabs, $fieldRequired);
                 }
             }
         } elseif ($source->type === 'commerceProductType') {
@@ -411,9 +413,9 @@ class Sources extends Component
             if ($commercePlugin) {
                 $productType = $commercePlugin->getProductTypes()->getProductTypeById($source->typeId);
                 if ($productType) {
-                    $this->collectLayoutFields($productType->getFieldLayout(), $sourceCustomFields, $fieldTabs);
+                    $this->collectLayoutFields($productType->getFieldLayout(), $sourceCustomFields, $fieldTabs, $fieldRequired);
                     if (method_exists($productType, 'getVariantFieldLayout')) {
-                        $this->collectLayoutFields($productType->getVariantFieldLayout(), $sourceCustomFields, $fieldTabs);
+                        $this->collectLayoutFields($productType->getVariantFieldLayout(), $sourceCustomFields, $fieldTabs, $fieldRequired);
                     }
                 }
             }
@@ -427,6 +429,7 @@ class Sources extends Component
                 'supported' => $this->isFieldSupported($field),
                 'fieldType' => $field::displayName(),
                 'tab' => $fieldTabs[$field->handle] ?? null,
+                'required' => $fieldRequired[$field->handle] ?? false,
             ];
 
             if ($field instanceof \craft\fields\Table) {

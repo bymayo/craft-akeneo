@@ -1,5 +1,13 @@
 # Release Notes for Akeneo
 
+## 1.0.10 - 2026-06-01
+
+### Added
+- Required fields are now indicated with an asterisk next to the field label in the field mapping table, matching Craft's own field labels. Title and Slug always show as required.
+
+### Fixed
+- Widened the `akeneoAttribute` field mapping column to `text` so large Matrix/Table mappings no longer fail to save with a "Data too long" error.
+
 ## 1.0.9 - 2026-05-29
 
 ### Added

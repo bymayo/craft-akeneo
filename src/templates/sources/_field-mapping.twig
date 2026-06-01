@@ -196,7 +196,7 @@
 
                     <tr>
                         <td style="vertical-align: top;">
-                            <strong>{{ field.name }}</strong><br>
+                            <strong>{{ field.name }}</strong>{% if field.required ?? false %}<span class="required"></span>{% endif %}<br>
                             <code style="font-size: 10px;">{{ field.handle }}</code>
                             <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
                         </td>
@@ -253,7 +253,7 @@
 
                     <tr>
                         <td style="vertical-align: top;">
-                            <strong>{{ field.name }}</strong><br>
+                            <strong>{{ field.name }}</strong>{% if field.required ?? false %}<span class="required"></span>{% endif %}<br>
                             <code style="font-size: 10px;">{{ field.handle }}</code>
                             <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
                         </td>
@@ -443,7 +443,7 @@
                     {% endif %}
                     <tr>
                         <td style="vertical-align: middle;">
-                            <strong>{{ field.name }}</strong><br>
+                            <strong>{{ field.name }}</strong>{% if field.required ?? false %}<span class="required"></span>{% endif %}<br>
                             <code style="font-size: 10px;">{{ field.handle }}</code>
                             <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
                         </td>
@@ -477,7 +477,7 @@
                     {% endif %}
                     <tr>
                         <td style="vertical-align: middle;">
-                            <strong>{{ field.name }}</strong><br>
+                            <strong>{{ field.name }}</strong>{% if field.required ?? false %}<span class="required"></span>{% endif %}<br>
                             <code style="font-size: 10px;">{{ field.handle }}</code>
                             <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
                         </td>
@@ -499,7 +499,7 @@
                     {% if not field.supported %}
                         <tr>
                             <td style="vertical-align: middle;">
-                                <strong>{{ field.name }}</strong><br>
+                                <strong>{{ field.name }}</strong>{% if field.required ?? false %}<span class="required"></span>{% endif %}<br>
                                 <code style="font-size: 10px;">{{ field.handle }}</code>
                             </td>
                             <td style="vertical-align: middle;">
@@ -517,7 +517,7 @@
 
                         <tr>
                             <td style="vertical-align: middle;">
-                                <strong>{{ field.name }}</strong><br>
+                                <strong>{{ field.name }}</strong>{% if field.required ?? false %}<span class="required"></span>{% endif %}<br>
                                 <code style="font-size: 10px;">{{ field.handle }}</code>
                                 <input type="hidden" name="mappings[{{ idx }}][craftFieldHandle]" value="{{ field.handle }}">
                             </td>

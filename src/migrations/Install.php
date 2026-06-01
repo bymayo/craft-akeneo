@@ -30,7 +30,7 @@ class Install extends Migration
             'id' => $this->primaryKey(),
             'sourceId' => $this->integer()->notNull(),
             'craftFieldHandle' => $this->string()->notNull(),
-            'akeneoAttribute' => $this->string()->notNull(),
+            'akeneoAttribute' => $this->text()->notNull(),
             'dateCreated' => $this->dateTime()->notNull(),
             'dateUpdated' => $this->dateTime()->notNull(),
             'uid' => $this->uid(),
