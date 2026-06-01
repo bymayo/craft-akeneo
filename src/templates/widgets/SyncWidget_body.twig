@@ -1,4 +1,5 @@
 {% set sources = sources|default([]) %}
+{% set failures = failures|default({}) %}
 {% set settingsMissing = settingsMissing|default(false) %}
 {% set settingsUrl = settingsUrl|default(cpUrl('akeneo/settings')) %}
 
@@ -16,7 +17,12 @@
                 <button type="button" class="btn small akeneo-sync-btn" data-source-id="{{ source.id }}" data-type="images"><span class="icon" style="display:inline-flex;width:12px;height:12px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('image') }}</span>{{ 'Images Only'|t('akeneo') }}</button>
             </div>
             {% if source.lastSyncedAt %}
-                <span class="light" style="font-size: 11px; display: block; margin-top: 8px;">{{ 'Last Synced:'|t('akeneo') }} {{ date(source.lastSyncedAt)|timestamp }}</span>
+                <span class="light" style="font-size: 11px; display: block; margin-top: 8px;">
+                    {{ 'Last Synced:'|t('akeneo') }} {{ date(source.lastSyncedAt)|timestamp }}
+                    {% if failures[source.id] ?? false %}
+                        <a href="{{ url('akeneo/sources/' ~ source.id ~ '/log', { status: 'fail' }) }}" title="{{ 'This source has logged sync failures'|t('akeneo') }}" style="margin-left:4px;color:var(--error-color);"><span class="icon" style="display:inline-flex;width:12px;height:12px;vertical-align:-2px;">{{ iconSvg('triangle-exclamation') }}</span></a>
+                    {% endif %}
+                </span>
             {% else %}
                 <span class="light" style="font-size: 11px; display: block; margin-top: 8px;">{{ 'Last Synced:'|t('akeneo') }} {{ 'Never'|t('akeneo') }}</span>
             {% endif %}

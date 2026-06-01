@@ -171,7 +171,9 @@ class Plugin extends BasePlugin
                 $event->rules['akeneo/settings'] = 'akeneo/sources/settings';
                 $event->rules['akeneo/sources'] = 'akeneo/sources/index';
                 $event->rules['akeneo/sources/new'] = 'akeneo/sources/edit';
+                $event->rules['akeneo/sources/import'] = 'akeneo/sources/import';
                 $event->rules['akeneo/sources/<sourceId:\d+>'] = 'akeneo/sources/edit';
+                $event->rules['akeneo/sources/<sourceId:\d+>/export'] = 'akeneo/sources/export';
                 $event->rules['akeneo/sources/<sourceId:\d+>/field-mapping'] = 'akeneo/sources/field-mapping';
                 $event->rules['akeneo/sources/<sourceId:\d+>/console-commands'] = 'akeneo/sources/console-commands';
                 $event->rules['akeneo/sources/<sourceId:\d+>/log'] = 'akeneo/sources/log';

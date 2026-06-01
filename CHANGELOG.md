@@ -1,5 +1,15 @@
 # Release Notes for Akeneo
 
+## 1.0.11 - 2026-06-01
+
+### Added
+- Export/import for sources: export a source (with its filters and field mappings) to a JSON file from the source Action menu, and import it via the dropdown next to "New Source" on the Sources index. Section / product type, site, and field references are re-resolved by handle, so it works across environments without using Project Config.
+- Duplicate a source (with its field mappings) from a duplicate icon on each row of the Sources index.
+- A warning icon now appears when a source has logged sync failures — next to the date in the "Last Synced" column on the Sources index, on the Fail filter in the Log tab, and beside "Last Synced" on the dashboard widget. Clicking it jumps to the failed log entries.
+
+### Changed
+- The "Est. Products" count on the Sources index is now cached indefinitely and only refreshes when the source is updated (not on every page load or sync).
+
 ## 1.0.10 - 2026-06-01
 
 ### Added

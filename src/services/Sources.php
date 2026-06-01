@@ -111,7 +111,10 @@ class Sources extends Component
             $page = $sync->getClient()->getProductApi()->listPerPage(1, true, $queryParams);
             $count = $page->getCount();
 
-            Craft::$app->getCache()->set($cacheKey, $count ?? '__null__');
+            // Cache indefinitely (0 = no expiry). The count only changes when the
+            // source config changes — saveSource() invalidates this key, while a
+            // sync only touches lastSyncedAt via raw SQL and leaves it intact.
+            Craft::$app->getCache()->set($cacheKey, $count ?? '__null__', 0);
 
             return $count;
         } catch (\Throwable $e) {
@@ -326,6 +329,150 @@ class Sources extends Component
         }
 
         return true;
+    }
+
+    /**
+     * Resolve the handle for a source's section / Commerce product type, so it
+     * can be re-resolved on a different environment where the numeric IDs differ.
+     */
+    public function getTypeHandle(string $type, int $typeId): ?string
+    {
+        if ($type === 'section') {
+            return Craft::$app->getEntries()->getSectionById($typeId)?->handle;
+        }
+
+        if ($type === 'commerceProductType') {
+            $commercePlugin = Craft::$app->plugins->getPlugin('commerce');
+
+            if ($commercePlugin) {
+                return $commercePlugin->getProductTypes()->getProductTypeById($typeId)?->handle;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve a section / Commerce product type handle back to its local ID.
+     */
+    public function resolveTypeId(string $type, string $handle): ?int
+    {
+        if ($type === 'section') {
+            return Craft::$app->getEntries()->getSectionByHandle($handle)?->id;
+        }
+
+        if ($type === 'commerceProductType') {
+            $commercePlugin = Craft::$app->plugins->getPlugin('commerce');
+
+            if ($commercePlugin) {
+                return $commercePlugin->getProductTypes()->getProductTypeByHandle($handle)?->id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Build a portable, environment-agnostic representation of a source and its
+     * field mappings for export to another environment.
+     */
+    public function getSourceExportData(Source $source): array
+    {
+        $siteHandle = $source->siteId
+            ? Craft::$app->getSites()->getSiteById($source->siteId)?->handle
+            : null;
+
+        $mappings = array_map(static fn(FieldMapping $mapping) => [
+            'craftFieldHandle' => $mapping->craftFieldHandle,
+            'akeneoAttribute' => $mapping->akeneoAttribute,
+        ], $this->getMappingsBySourceId($source->id));
+
+        return [
+            'plugin' => 'akeneo',
+            'version' => 1,
+            'source' => [
+                'name' => $source->name,
+                'type' => $source->type,
+                'typeHandle' => $this->getTypeHandle($source->type, $source->typeId),
+                'orphanedEntryAction' => $source->orphanedEntryAction,
+                'entryIdentifier' => $source->entryIdentifier,
+                'akeneoLocale' => $source->akeneoLocale,
+                'siteHandle' => $siteHandle,
+                'filters' => $source->filters ? json_decode($source->filters, true) : null,
+            ],
+            'fieldMappings' => $mappings,
+        ];
+    }
+
+    /**
+     * Create a new source (and its field mappings) from previously exported
+     * data, re-resolving environment-specific references by handle.
+     *
+     * @throws \RuntimeException if the data is invalid or the type/handle can't be resolved on this environment.
+     */
+    public function createSourceFromImport(array $data): Source
+    {
+        $sourceData = $data['source'] ?? null;
+
+        if (!is_array($sourceData)) {
+            throw new \RuntimeException('The import file is missing source data.');
+        }
+
+        $type = $sourceData['type'] ?? null;
+        $typeHandle = $sourceData['typeHandle'] ?? null;
+
+        if (!$type || !$typeHandle) {
+            throw new \RuntimeException('The import file is missing the source type.');
+        }
+
+        $typeId = $this->resolveTypeId($type, $typeHandle);
+
+        if (!$typeId) {
+            $label = $type === 'section' ? 'section' : 'Commerce product type';
+            throw new \RuntimeException("Couldn't find a {$label} with the handle \"{$typeHandle}\" on this environment.");
+        }
+
+        $source = new Source();
+        $source->name = $sourceData['name'] ?? 'Imported source';
+        $source->type = $type;
+        $source->typeId = $typeId;
+        $source->orphanedEntryAction = $sourceData['orphanedEntryAction'] ?? 'doNothing';
+        $source->entryIdentifier = $sourceData['entryIdentifier'] ?? null;
+        $source->akeneoLocale = $sourceData['akeneoLocale'] ?? null;
+
+        // Re-resolve the site by handle; fall back to the primary site if missing.
+        $siteHandle = $sourceData['siteHandle'] ?? null;
+        $source->siteId = $siteHandle
+            ? Craft::$app->getSites()->getSiteByHandle($siteHandle)?->id
+            : null;
+
+        $filters = $sourceData['filters'] ?? null;
+        $source->filters = !empty($filters) ? json_encode($filters) : null;
+
+        if (!$this->saveSource($source)) {
+            throw new \RuntimeException('Couldn\'t save imported source: ' . implode(', ', $source->getErrorSummary(true)));
+        }
+
+        $mappings = [];
+
+        foreach ($data['fieldMappings'] ?? [] as $mapping) {
+            $handle = $mapping['craftFieldHandle'] ?? null;
+
+            if (!$handle) {
+                continue;
+            }
+
+            $mappings[] = [
+                'craftFieldHandle' => $handle,
+                'akeneoAttribute' => $mapping['akeneoAttribute'] ?? '',
+            ];
+        }
+
+        if (!empty($mappings)) {
+            $this->saveMappings($source->id, $mappings);
+        }
+
+        return $source;
     }
 
     private const SUPPORTED_FIELD_TYPES = [

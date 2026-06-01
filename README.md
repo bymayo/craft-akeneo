@@ -9,7 +9,8 @@ Akeneo is a Craft CMS plugin that syncs products and data from [Akeneo PIM](http
 ## Features
 
 - **Source Management** - Create multiple sources to sync different Akeneo product sets into different Craft sections or Commerce product types
-- **Field Mapping** - Map Akeneo attributes to Craft fields with support for plain text, numbers, dropdowns, dates, table fields, matrix fields and asset fields
+- **Field Mapping** - Map Akeneo attributes to Craft fields with support for plain text, CKEditor, numbers, dropdowns, dates, table fields, matrix fields and asset fields
+- **Export, Import & Duplicate** - Export a source (with its filters and field mappings) to a JSON file, import it on another environment, or duplicate a source in place — references are re-resolved by handle, so it works across environments without Project Config
 - **Asset Syncing** - Download and sync Akeneo asset collections into Craft asset fields, respecting each field's volume configuration
 - **Multi-Asset Support** - Asset fields that allow multiple assets can be mapped to multiple Akeneo asset collections
 - **Entries & Categories** - Map Akeneo attributes to Entries and Categories fields with automatic creation of missing entries and categories
@@ -130,6 +131,14 @@ It's handy when you want to:
 - Debug a sync issue (image volumes, value mappings, matrix blocks, etc.) without sitting through thousands of products.
 
 You'll find Test Sync in the Action dropdown on both the **Sources index** and each **Source edit page**, marked with a terminal icon.
+
+## Export, Import & Duplicate
+
+Sources can be moved between environments without using Project Config, so users keep the freedom to create sources directly on any environment.
+
+- **Export** - From a source's Action dropdown, choose **Export** to download a `.json` file containing the source config (filters, locale, orphaned-entry action, etc.) and all of its field mappings. Environment-specific values (section / product type, site) are stored by **handle**, not by ID.
+- **Import** - On the **Sources index**, open the dropdown next to **New Source** and choose **Import**, then pick a previously exported `.json` file. A new source is created and the section / product type, site and field references are re-resolved by handle on the current environment. If a handle doesn't exist here, the import fails with a clear message.
+- **Duplicate** - Each row on the Sources index has a duplicate icon next to the delete button. Duplicating creates a copy of the source (named `… (copy)`) along with all of its field mappings, then opens it for editing.
 
 ## Console Commands
 

@@ -50,6 +50,7 @@ class SourcesController extends Controller
                 'type' => $typeLabel,
                 'lastSyncedAt' => $source->lastSyncedAt,
                 'estimatedProducts' => Plugin::getInstance()->sources->getEstimatedProductCount($source),
+                'hasFailures' => Plugin::getInstance()->sync->sourceHasFailures($source->id),
             ];
         }
 
@@ -144,6 +145,92 @@ class SourcesController extends Controller
         }
 
         return $this->redirectToPostedUrl($source);
+    }
+
+    public function actionExport(int $sourceId): Response
+    {
+        $source = Plugin::getInstance()->sources->getSourceById($sourceId);
+
+        if (!$source) {
+            throw new NotFoundHttpException('Source not found');
+        }
+
+        $data = Plugin::getInstance()->sources->getSourceExportData($source);
+        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        $slug = $source->name ? \craft\helpers\StringHelper::toKebabCase($source->name) : (string) $source->id;
+        $filename = 'akeneo-source-' . ($slug ?: $source->id) . '.json';
+
+        return Craft::$app->getResponse()->sendContentAsFile($json, $filename, [
+            'mimeType' => 'application/json',
+        ]);
+    }
+
+    public function actionImport(): Response
+    {
+        if (!Craft::$app->getRequest()->getIsPost()) {
+            return $this->redirect('akeneo/sources');
+        }
+
+        $this->requirePostRequest();
+
+        $uploadedFile = \yii\web\UploadedFile::getInstanceByName('file');
+
+        if (!$uploadedFile) {
+            Craft::$app->getSession()->setError('Please choose a file to import.');
+
+            return $this->redirect('akeneo/sources/import');
+        }
+
+        $data = json_decode((string) file_get_contents($uploadedFile->tempName), true);
+
+        if (!is_array($data)) {
+            Craft::$app->getSession()->setError('The import file isn\'t valid JSON.');
+
+            return $this->redirect('akeneo/sources/import');
+        }
+
+        if (isset($data['source']['name'])) {
+            $data['source']['name'] .= ' (imported)';
+        }
+
+        try {
+            $source = Plugin::getInstance()->sources->createSourceFromImport($data);
+        } catch (\Throwable $e) {
+            Craft::$app->getSession()->setError($e->getMessage());
+
+            return $this->redirect('akeneo/sources/import');
+        }
+
+        Craft::$app->getSession()->setNotice('Source imported.');
+
+        return $this->redirect('akeneo/sources');
+    }
+
+    public function actionDuplicate(): Response
+    {
+        $this->requirePostRequest();
+
+        $sourceId = (int) Craft::$app->getRequest()->getRequiredBodyParam('sourceId');
+        $source = Plugin::getInstance()->sources->getSourceById($sourceId);
+
+        if (!$source) {
+            throw new NotFoundHttpException('Source not found');
+        }
+
+        // Duplicating is an export + import on the same environment.
+        $data = Plugin::getInstance()->sources->getSourceExportData($source);
+        $data['source']['name'] = $source->name . ' (copy)';
+
+        try {
+            Plugin::getInstance()->sources->createSourceFromImport($data);
+        } catch (\Throwable $e) {
+            return $this->asJson(['success' => false, 'error' => $e->getMessage()]);
+        }
+
+        Craft::$app->getSession()->setNotice('Source duplicated.');
+
+        return $this->asJson(['success' => true]);
     }
 
     public function actionConsoleCommands(int $sourceId): Response

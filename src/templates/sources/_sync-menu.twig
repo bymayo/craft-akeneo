@@ -16,6 +16,7 @@
             <hr role="presentation">
             <ul>
                 <li><a href="{{ url('akeneo/sources/' ~ source.id ~ '/log') }}"><span class="icon" style="display:inline-flex;width:14px;height:14px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('list') }}</span>{{ 'View Log'|t('akeneo') }}</a></li>
+                <li><a href="{{ url('akeneo/sources/' ~ source.id ~ '/export') }}"><span class="icon" style="display:inline-flex;width:14px;height:14px;vertical-align:-2px;margin-right:4px;">{{ iconSvg('download') }}</span>{{ 'Export'|t('akeneo') }}</a></li>
             </ul>
         </div>
     </div>

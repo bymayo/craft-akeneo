@@ -34,7 +34,7 @@
                 Warning <span class="light">({{ counts.warning }})</span>
             </a>
             <a class="btn{{ statusFilter == 'fail' ? ' active' : '' }}" href="{{ url('akeneo/sources/' ~ source.id ~ '/log', { status: 'fail' }) }}">
-                Fail <span class="light">({{ counts.fail }})</span>
+                {% if counts.fail > 0 %}<span class="icon" style="display:inline-flex;width:12px;height:12px;vertical-align:-2px;margin-right:4px;color:var(--error-color);">{{ iconSvg('triangle-exclamation') }}</span>{% endif %}Fail <span class="light">({{ counts.fail }})</span>
             </a>
         </div>
 

@@ -69,8 +69,15 @@ class SyncWidget extends Widget
             $sources = Plugin::getInstance()->sources->getAllSources();
         }
 
+        $failures = [];
+
+        foreach ($sources as $source) {
+            $failures[$source->id] = Plugin::getInstance()->sync->sourceHasFailures($source->id);
+        }
+
         return Craft::$app->view->renderTemplate('akeneo/widgets/SyncWidget_body', [
             'sources' => $sources,
+            'failures' => $failures,
             'settingsMissing' => $settingsMissing,
             'settingsUrl' => \craft\helpers\UrlHelper::cpUrl('akeneo/settings'),
         ]);

@@ -128,6 +128,13 @@ class Sync extends Component
         return $counts;
     }
 
+    public function sourceHasFailures(int $sourceId): bool
+    {
+        return SyncLogRecord::find()
+            ->where(['sourceId' => $sourceId, 'status' => 'fail'])
+            ->exists();
+    }
+
     public function clearLogsForSource(int $sourceId): int
     {
         return SyncLogRecord::deleteAll(['sourceId' => $sourceId]);

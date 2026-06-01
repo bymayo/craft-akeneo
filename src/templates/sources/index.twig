@@ -4,10 +4,24 @@
 {% set selectedSubnavItem = 'sources' %}
 
 {% block actionButton %}
-    <a href="{{ url('akeneo/sources/new') }}" class="btn submit">{{ 'New Source'|t('akeneo') }}</a>
+    <div class="btngroup submit">
+        <a href="{{ url('akeneo/sources/new') }}" class="btn submit">{{ 'New Source'|t('akeneo') }}</a>
+        <button type="button" class="btn submit menubtn" title="{{ 'Actions'|t('akeneo') }}"></button>
+        <div class="menu">
+            <ul>
+                <li><a id="akeneo-import-source">{{ 'Import'|t('akeneo') }}</a></li>
+            </ul>
+        </div>
+    </div>
 {% endblock %}
 
 {% block content %}
+
+    <form id="akeneo-import-form" method="post" accept-charset="UTF-8" enctype="multipart/form-data" style="display:none;">
+        {{ csrfInput() }}
+        <input type="hidden" name="action" value="akeneo/sources/import">
+        <input type="file" name="file" accept=".json,application/json" id="akeneo-import-file">
+    </form>
 
     {% if sources|length %}
         <div id="sources">
@@ -32,11 +46,19 @@
                             <td>{{ source.contentType }}</td>
                             <td>{{ source.type }}</td>
                             <td>{{ source.estimatedProducts is not null ? source.estimatedProducts|number : '—' }}</td>
-                            <td>{{ source.lastSyncedAt ? date(source.lastSyncedAt)|timestamp : 'Never' }}</td>
+                            <td>
+                                {{ source.lastSyncedAt ? date(source.lastSyncedAt)|timestamp : 'Never' }}
+                                {% if source.hasFailures %}
+                                    <a href="{{ url('akeneo/sources/' ~ source.id ~ '/log', { status: 'fail' }) }}" title="{{ 'This source has logged sync failures'|t('akeneo') }}" style="margin-left:6px;color:var(--error-color);"><span class="icon" style="display:inline-flex;width:14px;height:14px;vertical-align:-2px;">{{ iconSvg('triangle-exclamation') }}</span></a>
+                                {% endif %}
+                            </td>
                             <td class="thin">
                                 {% include 'akeneo/sources/_sync-menu' %}
                             </td>
-                            <td class="thin"><a class="delete icon" title="{{ 'Delete'|t('app') }}"></a></td>
+                            <td class="thin">
+                                <a role="button" title="{{ 'Duplicate'|t('akeneo') }}" data-akeneo-duplicate="{{ source.id }}" style="margin-right:10px;cursor:pointer;color:var(--medium-text-color);"><span class="icon" style="display:inline-flex;width:14px;height:14px;vertical-align:-2px;">{{ iconSvg('clone') }}</span></a>
+                                <a class="delete icon" title="{{ 'Delete'|t('app') }}"></a>
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -53,6 +75,42 @@
         tableSelector: '#sources-table',
         deleteAction: 'akeneo/sources/delete',
         confirmDeleteMessage: '{{ 'Are you sure you want to delete this source?'|t('akeneo') }}',
+    });
+
+    var importBtn = document.getElementById('akeneo-import-source');
+    var importFile = document.getElementById('akeneo-import-file');
+    var importForm = document.getElementById('akeneo-import-form');
+
+    if (importBtn && importFile && importForm) {
+        importBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            importFile.click();
+        });
+        importFile.addEventListener('change', function() {
+            if (importFile.files.length) {
+                importForm.submit();
+            }
+        });
+    }
+
+    document.querySelectorAll('[data-akeneo-duplicate]').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            var sourceId = this.getAttribute('data-akeneo-duplicate');
+
+            if (!confirm('{{ 'Are you sure you want to duplicate this source?'|t('akeneo') }}')) {
+                return;
+            }
+
+            Craft.postActionRequest('akeneo/sources/duplicate', { sourceId: sourceId }, function(response) {
+                if (response && response.success) {
+                    window.location.href = Craft.getCpUrl('akeneo/sources');
+                } else {
+                    Craft.cp.displayError('{{ 'Could not duplicate source.'|t('akeneo') }}');
+                }
+            });
+        });
     });
 
     document.querySelectorAll('[data-sync-type]').forEach(function(el) {
