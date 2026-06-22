@@ -1,7 +1,7 @@
 {
   "name": "bymayo/akeneo",
   "description": "Akeneo is a Craft CMS plugin that syncs products and data from Akeneo PIM (https://akeneo.com) into Craft CMS.",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "type": "craft-plugin",
   "license": "proprietary",
   "support": {

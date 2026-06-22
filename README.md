@@ -71,6 +71,22 @@ Navigate to the Akeneo section in the CP sidebar and click `New Source`:
 6. Optionally select a **Site** to import entries into
 7. Optionally add **Product Filters** to limit which products are synced
 
+#### Product Filters
+
+Each filter row has three parts: an **attribute code** (e.g. `sku`, `enabled`), an **operator**, and a **value**. Only products matching every filter are synced. The value format depends on the operator:
+
+| Operator | Value format | Example |
+| --- | --- | --- |
+| `=`, `!=` | Single value — `true`, `false`, a number, or text | `true` |
+| `<`, `>`, `<=`, `>=` | A number or date | `2024-01-01` |
+| `IN`, `NOT IN` | Comma-separated list | `red,green,blue` |
+| `CONTAINS`, `DOES NOT CONTAIN` | Text to match | `shirt` |
+| `STARTS WITH` | Prefix text | `SKU-` |
+| `BETWEEN`, `NOT BETWEEN` | Two comma-separated bounds (`min,max`) | `10,20` |
+| `EMPTY`, `NOT EMPTY` | No value (the value field is hidden) | — |
+
+The value field's placeholder updates to hint the expected format as you change the operator.
+
 ### 3. Map Fields
 
 After saving the source, navigate to the **Field Mapping** tab. Map each Craft field to an Akeneo attribute, a static value, or leave unmapped.

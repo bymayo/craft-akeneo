@@ -142,9 +142,9 @@
             <div id="filters-container">
                 {% for filter in existingFilters %}
                     <div class="filter-row" style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
-                        <input type="text" name="filters[{{ loop.index0 }}][attribute]" value="{{ filter.attribute }}" class="text" placeholder="Attribute code" style="flex: 0 0 33%;">
-                        <div style="flex: 0 0 180px;">
-                            <select name="filters[{{ loop.index0 }}][operator]" class="text" style="width: 100%;">
+                        <input type="text" name="filters[{{ loop.index0 }}][attribute]" value="{{ filter.attribute }}" class="text" placeholder="Attribute code (e.g. sku, enabled)" style="flex: 0 0 33%;">
+                        <div class="select fullwidth" style="flex: 0 0 180px;">
+                            <select name="filters[{{ loop.index0 }}][operator]">
                                 {% for op in ['=', '!=', '<', '>', '<=', '>=', 'IN', 'NOT IN', 'CONTAINS', 'DOES NOT CONTAIN', 'STARTS WITH', 'EMPTY', 'NOT EMPTY', 'BETWEEN', 'NOT BETWEEN'] %}
                                     <option value="{{ op }}" {{ filter.operator == op ? 'selected' }}>{{ op }}</option>
                                 {% endfor %}
@@ -169,16 +169,37 @@
         // Operators that don't take a value.
         var noValueOperators = ['EMPTY', 'NOT EMPTY'];
 
+        // Per-operator hint shown as the value field's placeholder.
+        var valuePlaceholders = {
+            '=': 'Value (true, false, number or text)',
+            '!=': 'Value (true, false, number or text)',
+            '<': 'Number or date',
+            '>': 'Number or date',
+            '<=': 'Number or date',
+            '>=': 'Number or date',
+            'IN': 'value1,value2,…',
+            'NOT IN': 'value1,value2,…',
+            'CONTAINS': 'Text to match',
+            'DOES NOT CONTAIN': 'Text to match',
+            'STARTS WITH': 'Prefix text',
+            'BETWEEN': 'min,max',
+            'NOT BETWEEN': 'min,max'
+        };
+
         function updateValueVisibility(row) {
             var operatorSelect = row.querySelector('select[name*="[operator]"]');
             var valueInput = row.querySelector('input[name*="[value]"]');
             if (!operatorSelect || !valueInput) return;
 
-            var hide = noValueOperators.indexOf(operatorSelect.value) !== -1;
+            var operator = operatorSelect.value;
+            var hide = noValueOperators.indexOf(operator) !== -1;
             valueInput.style.display = hide ? 'none' : '';
             if (hide) {
                 valueInput.value = '';
             }
+
+            // Hint the expected value format for the selected operator.
+            valueInput.placeholder = valuePlaceholders[operator] || 'Value';
         }
 
         container.querySelectorAll('.filter-row').forEach(updateValueVisibility);
@@ -200,8 +221,8 @@
                 optionsHtml += '<option value="' + op + '">' + op + '</option>';
             });
 
-            div.innerHTML = '<input type="text" name="filters[' + idx + '][attribute]" value="" class="text" placeholder="Attribute code" style="flex: 0 0 33%;">'
-                + '<div style="flex: 0 0 180px;"><select name="filters[' + idx + '][operator]" class="text" style="width: 100%;">' + optionsHtml + '</select></div>'
+            div.innerHTML = '<input type="text" name="filters[' + idx + '][attribute]" value="" class="text" placeholder="Attribute code (e.g. sku, enabled)" style="flex: 0 0 33%;">'
+                + '<div class="select fullwidth" style="flex: 0 0 180px;"><select name="filters[' + idx + '][operator]">' + optionsHtml + '</select></div>'
                 + '<input type="text" name="filters[' + idx + '][value]" value="" class="text" placeholder="Value" style="flex: 1;">'
                 + '<a class="delete icon filter-row-delete" title="Remove" style="margin-left: auto;"></a>';
 

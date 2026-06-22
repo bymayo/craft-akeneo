@@ -1,5 +1,11 @@
 # Release Notes for Akeneo
 
+## 1.0.13 - 2026-06-22
+
+### Changed
+- Restyled the Product Filter operator dropdown to use Craft's native select component.
+- Product Filter fields now show per-operator placeholder hints (e.g. `min,max` for `BETWEEN`, `value1,value2,…` for `IN`) to clarify the expected value format.
+
 ## 1.0.12 - 2026-06-22
 
 ### Changed
