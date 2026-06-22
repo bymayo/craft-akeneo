@@ -32,7 +32,7 @@
 {% block content %}
 
     <input type="hidden" name="action" value="akeneo/sources/save">
-    {{ redirectInput('akeneo/sources') }}
+    {{ redirectInput(source.id ? 'akeneo/sources/' ~ source.id : 'akeneo/sources') }}
 
     {% if source.id %}
         <input type="hidden" name="sourceId" value="{{ source.id }}">

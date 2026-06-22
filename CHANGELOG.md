@@ -1,5 +1,14 @@
 # Release Notes for Akeneo
 
+## 1.0.12 - 2026-06-22
+
+### Changed
+- Tidied nested Matrix/Table field labels.
+
+### Fixed
+- Fixed large field maps hanging the page on load.
+- Fixed save staying on the page for existing sources.
+
 ## 1.0.11 - 2026-06-01
 
 ### Added

@@ -1,0 +1,24 @@
+{# Renders a lightweight native <select> holding only the currently-selected
+   option. The full Akeneo attribute list is injected and the control is
+   upgraded to selectize lazily (on first focus/click) by the page JS, so a
+   source with many table/matrix dropdowns no longer freezes on load.
+
+   kind: 'full'  -> all attributes (akeneoOptionsHtml)
+         'asset' -> asset attributes only (akeneoAssetOptionsHtml) #}
+{% macro akeneoSelect(name, selected, options, kind, id) %}
+    {%- set selected = selected ?: '__none__' -%}
+    {%- set label = selected -%}
+    {%- for opt in options -%}
+        {%- if opt.value is defined and opt.value == selected -%}
+            {%- set label = opt.label -%}
+        {%- endif -%}
+    {%- endfor -%}
+    {# Wrapped in Craft's .select component so the resting (pre-upgrade) control
+       matches the rest of the CP. The page JS unwraps it on upgrade so selectize
+       attaches to a bare select. #}
+    <div class="select fullwidth akeneo-lazy-wrap">
+        <select name="{{ name }}"{% if id %} id="{{ id }}"{% endif %} class="akeneo-lazy-select" data-options="{{ kind }}">
+            <option value="{{ selected }}" selected>{{ label }}</option>
+        </select>
+    </div>
+{% endmacro %}

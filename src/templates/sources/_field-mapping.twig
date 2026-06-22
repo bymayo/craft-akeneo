@@ -1,6 +1,7 @@
 {% extends '_layouts/cp' %}
 
 {% import '_includes/forms.twig' as forms %}
+{% import 'akeneo/sources/_field-mapping-macros' as h %}
 
 {% set fullPageForm = true %}
 
@@ -113,6 +114,15 @@
             width: 100%;
             box-sizing: border-box;
         }
+        /* The lazy native dropdowns use Craft's .select component while resting
+           (before upgrading to selectize on focus); make the wrapper fill its
+           column like the upgraded selectize control does. */
+        .akeneo-mapping-table td .select.akeneo-lazy-wrap,
+        .table-mapping-row td .select.akeneo-lazy-wrap,
+        .matrix-entry-row td .select.akeneo-lazy-wrap {
+            width: 100%;
+            max-width: 100%;
+        }
         .table-mapping-row > .delete.icon,
         .matrix-entry-row > .delete.icon {
             z-index: 1;
@@ -224,14 +234,10 @@
                                                         {% set colValue = colAkeneo == '__static__' or (colStatic and not colAkeneo) ? '__static__' : (colAkeneo ?: '__none__') %}
                                                         <tr>
                                                             <td style="vertical-align: middle; white-space: nowrap;">
-                                                                <strong>{{ col.heading }}</strong><br><code style="font-size: 10px;">{{ col.handle }}</code>
+                                                                <strong>{{ col.heading }}</strong> <code style="font-size: 10px;">({{ col.handle }})</code>
                                                             </td>
                                                             <td>
-                                                                {{ forms.selectize({
-                                                                    name: 'mappings[' ~ idx ~ '][tableRows][' ~ loop.parent.loop.index0 ~ '][' ~ colId ~ '][akeneo]',
-                                                                    value: colValue,
-                                                                    options: akeneoSelectOptions,
-                                                                }) }}
+                                                                {{ h.akeneoSelect('mappings[' ~ idx ~ '][tableRows][' ~ loop.parent.loop.index0 ~ '][' ~ colId ~ '][akeneo]', colValue, akeneoSelectOptions, 'full') }}
                                                             </td>
                                                             <td>
                                                                 <input type="text" name="mappings[{{ idx }}][tableRows][{{ loop.parent.loop.index0 }}][{{ colId }}][static]" value="{{ colStatic }}" class="fullwidth text" placeholder="Enter value…">
@@ -285,10 +291,8 @@
                                                                 {% set nestedTableRows = row[nestedField.handle] ?? [] %}
                                                                 <tr>
                                                                     <td style="vertical-align: top;" colspan="3">
-                                                                        <strong>{{ nestedField.name }}</strong>
-                                                                        <br>
-                                                                        <code style="font-size: 10px;">{{ nestedField.handle }}</code>
-                                                                        <div class="table-field-mapping" data-field-index="{{ idx }}" data-matrix-field="{{ field.handle }}" data-entry-type="{{ entryType.handle }}" data-matrix-row="{{ matrixRowIdx }}" data-table-field="{{ nestedField.handle }}">
+                                                                        <strong>{{ nestedField.name }}</strong> <code style="font-size: 10px;">({{ nestedField.handle }})</code>
+                                                                        <div class="table-field-mapping" style="margin-top: 8px;" data-field-index="{{ idx }}" data-matrix-field="{{ field.handle }}" data-entry-type="{{ entryType.handle }}" data-matrix-row="{{ matrixRowIdx }}" data-table-field="{{ nestedField.handle }}">
                                                                             <div class="table-rows-body">
                                                                                 {% for tableRow in nestedTableRows %}
                                                                                     {% set tableRowIdx = loop.index0 %}
@@ -309,14 +313,10 @@
                                                                                                     {% set colValue = colAkeneo == '__static__' or (colStatic and not colAkeneo) ? '__static__' : (colAkeneo ?: '__none__') %}
                                                                                                     <tr>
                                                                                                         <td style="vertical-align: middle; white-space: nowrap;">
-                                                                                                            <strong>{{ col.heading }}</strong><br><code style="font-size: 10px;">{{ col.handle }}</code>
+                                                                                                            <strong>{{ col.heading }}</strong> <code style="font-size: 10px;">({{ col.handle }})</code>
                                                                                                         </td>
                                                                                                         <td>
-                                                                                                            {{ forms.selectize({
-                                                                                                                name: 'mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][tableRows][' ~ tableRowIdx ~ '][' ~ colId ~ '][akeneo]',
-                                                                                                                value: colValue,
-                                                                                                                options: akeneoSelectOptions,
-                                                                                                            }) }}
+                                                                                                            {{ h.akeneoSelect('mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][tableRows][' ~ tableRowIdx ~ '][' ~ colId ~ '][akeneo]', colValue, akeneoSelectOptions, 'full') }}
                                                                                                         </td>
                                                                                                         <td>
                                                                                                             <input type="text" name="mappings[{{ idx }}][matrix][{{ entryType.handle }}][{{ matrixRowIdx }}][{{ nestedField.handle }}][tableRows][{{ tableRowIdx }}][{{ colId }}][static]" value="{{ colStatic }}" class="fullwidth text" placeholder="Enter value…">
@@ -341,9 +341,7 @@
                                                                 {% endif %}
                                                                 <tr>
                                                                     <td style="vertical-align: middle; white-space: nowrap;">
-                                                                        <strong>{{ nestedField.name }}</strong>
-                                                                        <br>
-                                                                        <code style="font-size: 10px;">{{ nestedField.handle }}</code>
+                                                                        <strong>{{ nestedField.name }}</strong> <code style="font-size: 10px;">({{ nestedField.handle }})</code>
                                                                     </td>
                                                                     <td>
                                                                         {% if isNestedMultiAsset %}
@@ -355,11 +353,7 @@
                                                                                 {% endfor %}
                                                                             </select>
                                                                         {% else %}
-                                                                            {{ forms.selectize({
-                                                                                name: 'mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][akeneo]',
-                                                                                value: nestedValue ?: '__none__',
-                                                                                options: akeneoAssetSelectOptions,
-                                                                            }) }}
+                                                                            {{ h.akeneoSelect('mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][akeneo]', nestedValue ?: '__none__', akeneoAssetSelectOptions, 'asset') }}
                                                                         {% endif %}
                                                                     </td>
                                                                     <td></td>
@@ -370,9 +364,7 @@
                                                                 {% set nestedRelValues = nestedValue is iterable ? nestedValue : (nestedValue ? [nestedValue] : []) %}
                                                                 <tr>
                                                                     <td style="vertical-align: middle; white-space: nowrap;">
-                                                                        <strong>{{ nestedField.name }}</strong>
-                                                                        <br>
-                                                                        <code style="font-size: 10px;">{{ nestedField.handle }}</code>
+                                                                        <strong>{{ nestedField.name }}</strong> <code style="font-size: 10px;">({{ nestedField.handle }})</code>
                                                                     </td>
                                                                     <td>
                                                                         <select name="mappings[{{ idx }}][matrix][{{ entryType.handle }}][{{ matrixRowIdx }}][{{ nestedField.handle }}][akeneoMulti][]" multiple data-max-items="{{ nestedField.maxRelations ?? '' }}" style="display:none">
@@ -390,9 +382,7 @@
                                                                 {% if not nestedField.supported %}
                                                                     <tr>
                                                                         <td style="vertical-align: middle; white-space: nowrap;">
-                                                                            <strong>{{ nestedField.name }}</strong>
-                                                                            <br>
-                                                                            <code style="font-size: 10px;">{{ nestedField.handle }}</code>
+                                                                            <strong>{{ nestedField.name }}</strong> <code style="font-size: 10px;">({{ nestedField.handle }})</code>
                                                                         </td>
                                                                         <td colspan="2">
                                                                             <span class="light">Not supported</span>
@@ -405,16 +395,10 @@
                                                                     {% set nestedSelectVal = nestedIsStatic ? '__static__' : (nestedValue ?: '__none__') %}
                                                                     <tr>
                                                                         <td style="vertical-align: middle; white-space: nowrap;">
-                                                                            <strong>{{ nestedField.name }}</strong>
-                                                                            <br>
-                                                                            <code style="font-size: 10px;">{{ nestedField.handle }}</code>
+                                                                            <strong>{{ nestedField.name }}</strong> <code style="font-size: 10px;">({{ nestedField.handle }})</code>
                                                                         </td>
                                                                         <td>
-                                                                            {{ forms.selectize({
-                                                                                name: 'mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][akeneo]',
-                                                                                value: nestedSelectVal,
-                                                                                options: akeneoSelectOptions,
-                                                                            }) }}
+                                                                            {{ h.akeneoSelect('mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][akeneo]', nestedSelectVal, akeneoSelectOptions, 'full') }}
                                                                         </td>
                                                                         <td>
                                                                             <input type="text" name="mappings[{{ idx }}][matrix][{{ entryType.handle }}][{{ matrixRowIdx }}][{{ nestedField.handle }}][static]" value="{{ nestedStaticVal }}" class="fullwidth text matrix-static-value-input" placeholder="Enter value…" {% if not nestedIsStatic %}disabled{% endif %}>
@@ -460,12 +444,7 @@
                                     {% endfor %}
                                 </select>
                             {% else %}
-                                {{ forms.selectize({
-                                    name: 'mappings[' ~ idx ~ '][akeneoAttribute]',
-                                    id: 'akeneo-select-' ~ idx,
-                                    value: currentValue ?: '__none__',
-                                    options: akeneoAssetSelectOptions,
-                                }) }}
+                                {{ h.akeneoSelect('mappings[' ~ idx ~ '][akeneoAttribute]', currentValue ?: '__none__', akeneoAssetSelectOptions, 'asset', 'akeneo-select-' ~ idx) }}
                             {% endif %}
                         </td>
                         <td></td>
@@ -525,12 +504,7 @@
                                 <span class="light">{{ field.fieldType }}</span>
                             </td>
                             <td>
-                                {{ forms.selectize({
-                                    name: 'mappings[' ~ idx ~ '][akeneoAttribute]',
-                                    id: 'akeneo-select-' ~ idx,
-                                    value: selectVal,
-                                    options: akeneoSelectOptions,
-                                }) }}
+                                {{ h.akeneoSelect('mappings[' ~ idx ~ '][akeneoAttribute]', selectVal, akeneoSelectOptions, 'full', 'akeneo-select-' ~ idx) }}
                             </td>
                             <td>
                                 <input type="text" name="mappings[{{ idx }}][staticValue]" value="{{ staticVal }}" class="fullwidth text static-value-input" data-field-index="{{ idx }}" placeholder="Enter value…" {% if not isStatic %}disabled{% endif %}>
@@ -622,6 +596,76 @@
             $sel.selectize(opts);
         }
 
+        // Akeneo attribute dropdowns are rendered as bare native selects holding
+        // only their selected option, then upgraded to selectize on first
+        // interaction. This keeps pages with many table/matrix mappings from
+        // freezing while hundreds of selects each build the full attribute list.
+        function populateLazyOptions(selectEl) {
+            if (selectEl.getAttribute('data-populated')) return;
+
+            var kind = selectEl.getAttribute('data-options');
+            var optionsHtml = kind === 'asset' ? akeneoAssetOptionsHtml : akeneoOptionsHtml;
+            var current = selectEl.value;
+            var currentLabel = selectEl.options.length ? selectEl.options[0].text : current;
+
+            selectEl.innerHTML = optionsHtml;
+            selectEl.value = current;
+
+            // The saved value may no longer exist in Akeneo (e.g. attribute
+            // removed) — preserve it so it isn't silently dropped on save.
+            if (selectEl.value !== current) {
+                var opt = document.createElement('option');
+                opt.value = current;
+                opt.text = currentLabel;
+                opt.selected = true;
+                selectEl.insertBefore(opt, selectEl.firstChild);
+                selectEl.value = current;
+            }
+
+            selectEl.setAttribute('data-populated', '1');
+        }
+
+        function upgradeLazySelect(selectEl, open) {
+            if (!selectEl || selectEl.tagName !== 'SELECT' || selectEl.selectize) return;
+            if (!selectEl.classList.contains('akeneo-lazy-select')) return;
+
+            populateLazyOptions(selectEl);
+
+            // Lift the select out of the .select component wrapper so selectize
+            // doesn't render inside Craft's grey dropdown chrome.
+            var wrap = selectEl.parentNode;
+            if (wrap && wrap.classList && wrap.classList.contains('akeneo-lazy-wrap')) {
+                wrap.parentNode.insertBefore(selectEl, wrap);
+                wrap.parentNode.removeChild(wrap);
+            }
+
+            initSelectize(selectEl);
+
+            if (selectEl.selectize) {
+                selectEl.selectize.focus();
+                if (open) {
+                    selectEl.selectize.open();
+                }
+            }
+        }
+
+        // Pointer interaction: upgrade then open, suppressing the native dropdown.
+        document.addEventListener('mousedown', function(e) {
+            var el = e.target;
+            if (el && el.tagName === 'SELECT' && el.classList.contains('akeneo-lazy-select') && !el.selectize) {
+                e.preventDefault();
+                upgradeLazySelect(el, true);
+            }
+        }, true);
+
+        // Keyboard focus (tabbing in): upgrade without forcing the menu open.
+        document.addEventListener('focusin', function(e) {
+            var el = e.target;
+            if (el && el.tagName === 'SELECT' && el.classList.contains('akeneo-lazy-select') && !el.selectize) {
+                upgradeLazySelect(el, false);
+            }
+        }, true);
+
         // Toggle static value input for regular fields
         $(document).on('change', 'select[name*="[akeneoAttribute]"]', function() {
             var tr = $(this).closest('tr')[0];
@@ -699,7 +743,7 @@
             for (var colId in columns) {
                 html += '<tr>';
                 html += '<td style="vertical-align: middle; white-space: nowrap;"><strong>' + columns[colId].heading + '</strong><br><code style="font-size: 10px;">' + columns[colId].handle + '</code></td>';
-                html += '<td><select name="' + namePrefix + '[' + colId + '][akeneo]" style="display:none">' + akeneoOptionsHtml + '</select></td>';
+                html += '<td><div class="select fullwidth akeneo-lazy-wrap"><select name="' + namePrefix + '[' + colId + '][akeneo]" class="akeneo-lazy-select" data-options="full"><option value="__none__" selected>Don\'t import</option></select></div></td>';
                 html += '<td><input type="text" name="' + namePrefix + '[' + colId + '][static]" value="" class="fullwidth text" placeholder="Enter value…"></td>';
                 html += '</tr>';
             }
@@ -709,8 +753,9 @@
             div.innerHTML = html;
             body.appendChild(div);
 
-            // Init selectize on new selects
-            div.querySelectorAll('select').forEach(function(sel) {
+            // Eager-init only multi-selects; single attribute dropdowns are
+            // lazy and upgrade to selectize on first interaction.
+            div.querySelectorAll('select[multiple]').forEach(function(sel) {
                 initSelectize(sel);
             });
         });
@@ -753,7 +798,7 @@
                     if (isMulti) {
                         html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneoMulti][]" multiple data-max-items="' + (field.maxRelations || '') + '" style="display:none">' + akeneoAssetOptionsHtml + '</select></td>';
                     } else {
-                        html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneo]" style="display:none">' + akeneoAssetOptionsHtml + '</select></td>';
+                        html += '<td><div class="select fullwidth akeneo-lazy-wrap"><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneo]" class="akeneo-lazy-select" data-options="asset"><option value="__none__" selected>Don\'t import</option></select></div></td>';
                     }
                     html += '<td></td>';
                     html += '</tr>';
@@ -771,7 +816,7 @@
                 } else {
                     html += '<tr>';
                     html += '<td style="vertical-align: middle; white-space: nowrap;"><strong>' + field.name + '</strong><br><code style="font-size: 10px;">' + field.handle + '</code></td>';
-                    html += '<td><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneo]" style="display:none">' + akeneoOptionsHtml + '</select></td>';
+                    html += '<td><div class="select fullwidth akeneo-lazy-wrap"><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneo]" class="akeneo-lazy-select" data-options="full"><option value="__none__" selected>Don\'t import</option></select></div></td>';
                     html += '<td><input type="text" name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][static]" value="" class="fullwidth text matrix-static-value-input" placeholder="Enter value…" disabled></td>';
                     html += '</tr>';
                 }
@@ -782,8 +827,9 @@
             div.innerHTML = html;
             body.appendChild(div);
 
-            // Init selectize on new selects
-            div.querySelectorAll('select').forEach(function(sel) {
+            // Eager-init only multi-selects; single attribute dropdowns are
+            // lazy and upgrade to selectize on first interaction.
+            div.querySelectorAll('select[multiple]').forEach(function(sel) {
                 initSelectize(sel);
             });
         });
