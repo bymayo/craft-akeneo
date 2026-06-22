@@ -568,6 +568,10 @@ class Sources extends Component
             }
         }
 
+        // Built lazily the first time a Categories field is encountered, then
+        // shared across all of them (every field offers the same full list).
+        $allCategoryOptions = null;
+
         foreach ($sourceCustomFields as $field) {
             $fieldData = [
                 'handle' => $field->handle,
@@ -598,6 +602,10 @@ class Sources extends Component
             } elseif ($field instanceof \craft\fields\Categories) {
                 $fieldData['type'] = 'categories';
                 $fieldData['maxRelations'] = $field->maxRelations;
+                if ($allCategoryOptions === null) {
+                    $allCategoryOptions = $this->getAllCategoryOptions();
+                }
+                $fieldData['categoryOptions'] = $allCategoryOptions;
             } elseif ($field instanceof \craft\fields\Matrix) {
                 $fieldData['type'] = 'matrix';
                 $fieldData['entryTypes'] = [];
@@ -649,6 +657,44 @@ class Sources extends Component
         }
 
         return $fields;
+    }
+
+    /**
+     * Build the full set of categories across every category group, used to
+     * populate the "parent category" dropdown in the field-mapping UI. Grouped
+     * by category group (rendered as <optgroup>s) and indented by structure
+     * level. Returns [['name' => group name, 'options' => [['value','label']]]].
+     */
+    private function getAllCategoryOptions(): array
+    {
+        $groups = [];
+
+        foreach (Craft::$app->getCategories()->getAllGroups() as $group) {
+            $options = [];
+
+            // Querying by group auto-scopes to the group's structure, so results
+            // come back in hierarchical (lft) order with `level` set.
+            $categories = \craft\elements\Category::find()
+                ->group($group)
+                ->status(null)
+                ->all();
+
+            foreach ($categories as $category) {
+                $options[] = [
+                    'value' => (string) $category->id,
+                    'label' => str_repeat('— ', max(0, $category->level - 1)) . $category->title,
+                ];
+            }
+
+            if (!empty($options)) {
+                $groups[] = [
+                    'name' => $group->name,
+                    'options' => $options,
+                ];
+            }
+        }
+
+        return $groups;
     }
 
     public function getAkeneoAttributes(): array

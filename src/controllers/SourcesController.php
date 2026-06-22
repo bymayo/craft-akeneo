@@ -472,6 +472,39 @@ class SourcesController extends Controller
                 continue;
             }
 
+            // Categories field with parent placement: encode rows of
+            // { parentId, akeneo: [...codes] } under a discriminated object.
+            if (!empty($mapping['catParentMode']) && !empty($mapping['catParent'])) {
+                $rows = [];
+
+                foreach ($mapping['catParent'] as $row) {
+                    $parentId = $row['parentId'] ?? '';
+                    $akeneoCodes = array_values(array_filter(
+                        $row['akeneo'] ?? [],
+                        static fn($code) => $code !== '' && $code !== '__none__' && $code !== '__static__'
+                    ));
+
+                    if (!empty($akeneoCodes)) {
+                        $rows[] = [
+                            'parentId' => $parentId !== '' ? (int) $parentId : null,
+                            'akeneo' => $akeneoCodes,
+                        ];
+                    }
+                }
+
+                if (!empty($rows)) {
+                    $mappings[] = [
+                        'craftFieldHandle' => $handle,
+                        'akeneoAttribute' => json_encode([
+                            '__akeneoCategoriesParent' => true,
+                            'rows' => $rows,
+                        ]),
+                    ];
+                }
+
+                continue;
+            }
+
             // Multi-asset field
             if (!empty($mapping['akeneoAssetMulti'])) {
                 $assetCodes = array_filter($mapping['akeneoAssetMulti']);

@@ -1,5 +1,13 @@
 # Release Notes for Akeneo
 
+## 1.0.14 - 2026-06-22
+
+### Added
+- Categories fields can now map groups of Akeneo attributes to a parent category, so imported categories nest beneath the chosen parent. Enable "Add to parent category" to switch the field to a row-based view.
+
+### Fixed
+- Fixed an "Invalid Argument" error on the Field Mapping page when a relational field's saved value wasn't valid JSON.
+
 ## 1.0.13 - 2026-06-22
 
 ### Changed

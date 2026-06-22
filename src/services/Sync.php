@@ -332,6 +332,40 @@ class Sync extends Component
             $decoded = json_decode($akeneoAttr, true);
 
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                // Categories field with parent placement: each row maps a set of
+                // Akeneo attributes to a parent category the resolved categories
+                // are nested beneath.
+                if (isset($decoded['__akeneoCategoriesParent'])) {
+                    $craftField = Plugin::getInstance()->sources->resolveSourceField($source, $handle);
+
+                    if ($craftField instanceof CategoriesField) {
+                        $allIds = [];
+
+                        foreach (($decoded['rows'] ?? []) as $row) {
+                            $parentId = isset($row['parentId']) && $row['parentId'] !== null
+                                ? (int) $row['parentId']
+                                : null;
+
+                            foreach (($row['akeneo'] ?? []) as $akeneoCode) {
+                                $codeAttrType = $attributeTypes[$akeneoCode] ?? 'other';
+                                $resolved = Plugin::getInstance()->attributes->resolveValue(
+                                    $akeneoCode, $codeAttrType, $values, $this->client, $locale
+                                );
+                                if ($resolved !== null) {
+                                    $ids = $this->resolveCategoriesFieldValue($craftField, $resolved, $parentId);
+                                    $allIds = array_merge($allIds, $ids);
+                                }
+                            }
+                        }
+
+                        if (!empty($allIds)) {
+                            $element->setFieldValue($handle, $allIds);
+                        }
+                    }
+
+                    continue;
+                }
+
                 if (array_is_list($decoded)) {
                     // Check first element to distinguish: strings = multi-relational, objects = table rows
                     if (!empty($decoded) && is_string($decoded[0])) {
@@ -548,7 +582,7 @@ class Sync extends Component
         return $ids;
     }
 
-    private function resolveCategoriesFieldValue(CategoriesField $field, mixed $value): array
+    private function resolveCategoriesFieldValue(CategoriesField $field, mixed $value, ?int $parentId = null): array
     {
         if ($value === null || $value === '') {
             return [];
@@ -577,6 +611,12 @@ class Sync extends Component
                 $query->groupId($group->id);
             }
 
+            // Scope the lookup to direct children of the chosen parent so that
+            // identically-named categories under different parents stay distinct.
+            if ($parentId) {
+                $query->descendantOf($parentId)->descendantDist(1);
+            }
+
             $category = $query->one();
 
             // Create the category if it doesn't exist
@@ -584,6 +624,10 @@ class Sync extends Component
                 $category = new Category();
                 $category->groupId = $group->id;
                 $category->title = $title;
+
+                if ($parentId) {
+                    $category->setParentId($parentId);
+                }
 
                 if (!Craft::$app->elements->saveElement($category)) {
                     Plugin::log("Failed to create category '{$title}': " . implode(', ', $category->getErrorSummary(true)));

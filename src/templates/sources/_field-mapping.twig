@@ -202,7 +202,7 @@
 
                 {% if field.type == 'table' %}
                     {# Decode existing table rows from JSON #}
-                    {% set tableRows = currentValue ? currentValue|json_decode : [] %}
+                    {% set tableRows = (currentValue and currentValue starts with '[') ? currentValue|json_decode : [] %}
 
                     <tr>
                         <td style="vertical-align: top;">
@@ -255,7 +255,7 @@
                     </tr>
                 {% elseif field.type == 'matrix' %}
                     {# Decode existing matrix mappings from JSON #}
-                    {% set matrixData = currentValue ? currentValue|json_decode : {} %}
+                    {% set matrixData = (currentValue and currentValue starts with '{') ? currentValue|json_decode : {} %}
 
                     <tr>
                         <td style="vertical-align: top;">
@@ -420,7 +420,7 @@
                 {% elseif field.type == 'asset' %}
                     {% set isMultiAsset = field.maxRelations is not defined or field.maxRelations is null or field.maxRelations != 1 %}
                     {% if isMultiAsset %}
-                        {% set assetValues = currentValue ? currentValue|json_decode : [] %}
+                        {% set assetValues = (currentValue and currentValue starts with '[') ? currentValue|json_decode : (currentValue ? [currentValue] : []) %}
                         {% if assetValues is not iterable %}
                             {% set assetValues = currentValue ? [currentValue] : [] %}
                         {% endif %}
@@ -450,7 +450,19 @@
                         <td></td>
                     </tr>
                 {% elseif (field.type == 'entries' or field.type == 'categories') and field.maxRelations != 1 %}
-                    {% set relValues = currentValue ? currentValue|json_decode : [] %}
+                    {# Categories can opt into "parent mode": instead of one flat
+                       multiselect, map groups of Akeneo attributes to a chosen
+                       parent category so imported categories nest beneath it. #}
+                    {% set catParent = null %}
+                    {% if field.type == 'categories' and currentValue and currentValue starts with '{' %}
+                        {% set decodedCat = currentValue|json_decode %}
+                        {% if decodedCat.__akeneoCategoriesParent is defined %}
+                            {% set catParent = decodedCat %}
+                        {% endif %}
+                    {% endif %}
+                    {% set parentMode = catParent is not null %}
+
+                    {% set relValues = (currentValue and currentValue starts with '[') ? currentValue|json_decode : (currentValue ? [currentValue] : []) %}
                     {% if relValues is not iterable %}
                         {% set relValues = currentValue ? [currentValue] : [] %}
                     {% endif %}
@@ -463,16 +475,75 @@
                         <td style="vertical-align: middle;">
                             <span class="light">{{ field.fieldType }}</span>
                         </td>
-                        <td>
-                            <select name="mappings[{{ idx }}][akeneoAssetMulti][]" id="akeneo-select-{{ idx }}" multiple data-max-items="{{ field.maxRelations ?? '' }}" style="display:none">
-                                {% for opt in akeneoSelectOptions %}
-                                    {% if opt.value is defined and opt.value != '__none__' and opt.value != '__static__' and opt.optgroup is not defined %}
-                                        <option value="{{ opt.value }}" {{ opt.value in relValues ? 'selected' }}>{{ opt.label }}</option>
-                                    {% endif %}
-                                {% endfor %}
-                            </select>
+                        <td {% if field.type == 'categories' %}colspan="2"{% endif %}>
+                            {# Default view: flat multiselect of Akeneo attributes #}
+                            <div class="cat-flat-view" {% if parentMode %}style="display:none"{% endif %}>
+                                <select name="mappings[{{ idx }}][akeneoAssetMulti][]" id="akeneo-select-{{ idx }}" multiple data-max-items="{{ field.maxRelations ?? '' }}" style="display:none">
+                                    {% for opt in akeneoSelectOptions %}
+                                        {% if opt.value is defined and opt.value != '__none__' and opt.value != '__static__' and opt.optgroup is not defined %}
+                                            <option value="{{ opt.value }}" {{ not parentMode and opt.value in relValues ? 'selected' }}>{{ opt.label }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            {% if field.type == 'categories' %}
+                                {# Parent view: rows of [parent category] + [Akeneo attributes] #}
+                                <div class="cat-parent-view" data-field-index="{{ idx }}" data-field-handle="{{ field.handle }}" {% if not parentMode %}style="display:none"{% endif %}>
+                                    <div class="cat-parent-rows">
+                                        {% for row in (catParent.rows ?? []) %}
+                                            {% set rowAkeneo = row.akeneo ?? [] %}
+                                            <div class="cat-parent-row table-mapping-row" style="border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;">
+                                                <a class="delete icon cat-parent-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>
+                                                <table class="data fullwidth">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width: 40%;">Parent Category</th>
+                                                            <th style="width: 60%;">Akeneo Attributes</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr>
+                                                            <td style="vertical-align: top;">
+                                                                <div class="select fullwidth">
+                                                                    <select name="mappings[{{ idx }}][catParent][{{ loop.index0 }}][parentId]">
+                                                                        <option value="">Choose a parent</option>
+                                                                        {% for grp in (field.categoryOptions ?? []) %}
+                                                                            <optgroup label="{{ grp.name }}">
+                                                                                {% for opt in grp.options %}
+                                                                                    <option value="{{ opt.value }}" {{ (row.parentId is defined and row.parentId is not null and opt.value == row.parentId) ? 'selected' }}>{{ opt.label }}</option>
+                                                                                {% endfor %}
+                                                                            </optgroup>
+                                                                        {% endfor %}
+                                                                    </select>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <select name="mappings[{{ idx }}][catParent][{{ loop.index0 }}][akeneo][]" multiple style="display:none">
+                                                                    {% for opt in akeneoSelectOptions %}
+                                                                        {% if opt.value is defined and opt.value != '__none__' and opt.value != '__static__' and opt.optgroup is not defined %}
+                                                                            <option value="{{ opt.value }}" {{ opt.value in rowAkeneo ? 'selected' }}>{{ opt.label }}</option>
+                                                                        {% endif %}
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    <button type="button" class="btn small add icon add-cat-parent-row-btn">Add row</button>
+                                </div>
+                                <div style="margin-top: 8px;">
+                                    <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px;">
+                                        <input type="checkbox" name="mappings[{{ idx }}][catParentMode]" value="1" class="cat-parent-toggle" data-field-index="{{ idx }}" {{ parentMode ? 'checked' }}>
+                                        Add to parent category
+                                    </label>
+                                </div>
+                            {% endif %}
                         </td>
-                        <td></td>
+                        {% if field.type != 'categories' %}<td></td>{% endif %}
                     </tr>
                 {% else %}
                     {% if not field.supported %}
@@ -575,13 +646,49 @@
         {% endif %}
     {% endfor %}
 
+    {# Akeneo attribute options for JS-added category parent rows (no none/static) #}
+    {% set akeneoMultiOptionsHtml %}
+{% set lastJsType = null %}
+{% for attribute in akeneoAttributes %}
+{% if (attribute.type ?? '') != lastJsType %}
+{% if lastJsType is not null %}</optgroup>{% endif %}
+{% set lastJsType = attribute.type ?? '' %}
+<optgroup label="{{ lastJsType ?: 'Other' }}">
+{% endif %}
+<option value="{{ attribute.code }}">{{ attribute.label }}</option>
+{% endfor %}
+{% if lastJsType is not null %}</optgroup>{% endif %}
+    {% endset %}
+
+    {# Parent-category <option> HTML per field index, for JS-added parent rows #}
+    {% set categoryParentOptions = {} %}
+    {% for field in craftFields %}
+        {% if field.type == 'categories' %}
+            {% set parentOptsHtml %}
+<option value="">Choose a parent</option>
+{% for grp in (field.categoryOptions ?? []) %}
+<optgroup label="{{ grp.name }}">
+{% for opt in grp.options %}
+<option value="{{ opt.value }}">{{ opt.label }}</option>
+{% endfor %}
+</optgroup>
+{% endfor %}
+            {% endset %}
+            {# Key by handle, not index: PHP casts numeric-string keys back to
+               ints and Twig's merge then renumbers them, breaking the lookup. #}
+            {% set categoryParentOptions = categoryParentOptions|merge({ (field.handle): parentOptsHtml }) %}
+        {% endif %}
+    {% endfor %}
+
     {% js %}
     (function($) {
         var akeneoOptionsHtml = {{ akeneoOptionsHtml|json_encode|raw }};
         var akeneoAssetOptionsHtml = {{ akeneoAssetOptionsHtml|json_encode|raw }};
+        var akeneoMultiOptionsHtml = {{ akeneoMultiOptionsHtml|json_encode|raw }};
         var tableFieldColumns = {{ tableFieldColumns|json_encode|raw }};
         var matrixTableFieldColumns = {{ matrixTableFieldColumns|json_encode|raw }};
         var matrixFieldConfig = {{ matrixFieldConfig|json_encode|raw }};
+        var categoryParentOptions = {{ categoryParentOptions|json_encode|raw }};
 
         function initSelectize(selectEl) {
             var $sel = $(selectEl);
@@ -845,6 +952,58 @@
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('matrix-entry-row-delete')) {
                 e.target.closest('.matrix-entry-row').remove();
+            }
+        });
+
+        // Toggle category "Add to parent" between flat multiselect and parent rows
+        $(document).on('change', '.cat-parent-toggle', function() {
+            var tr = $(this).closest('tr')[0];
+            if (!tr) return;
+            var flat = tr.querySelector('.cat-flat-view');
+            var parent = tr.querySelector('.cat-parent-view');
+            if (this.checked) {
+                if (flat) flat.style.display = 'none';
+                if (parent) parent.style.display = '';
+            } else {
+                if (flat) flat.style.display = '';
+                if (parent) parent.style.display = 'none';
+            }
+        });
+
+        // Add category parent row
+        document.addEventListener('click', function(e) {
+            var addBtn = e.target.closest('.add-cat-parent-row-btn');
+            if (!addBtn) return;
+
+            var view = addBtn.closest('.cat-parent-view');
+            var fieldIndex = view.getAttribute('data-field-index');
+            var fieldHandle = view.getAttribute('data-field-handle');
+            var body = view.querySelector('.cat-parent-rows');
+            var rowIndex = body.querySelectorAll('.cat-parent-row').length;
+            var parentOpts = categoryParentOptions[fieldHandle] || '<option value="">Choose a parent</option>';
+
+            var div = document.createElement('div');
+            div.className = 'cat-parent-row table-mapping-row';
+            div.style.cssText = 'border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;';
+
+            var html = '<a class="delete icon cat-parent-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>';
+            html += '<table class="data fullwidth"><thead><tr><th style="width: 40%;">Parent Category</th><th style="width: 60%;">Akeneo Attributes</th></tr></thead><tbody><tr>';
+            html += '<td style="vertical-align: top;"><div class="select fullwidth"><select name="mappings[' + fieldIndex + '][catParent][' + rowIndex + '][parentId]">' + parentOpts + '</select></div></td>';
+            html += '<td><select name="mappings[' + fieldIndex + '][catParent][' + rowIndex + '][akeneo][]" multiple style="display:none">' + akeneoMultiOptionsHtml + '</select></td>';
+            html += '</tr></tbody></table>';
+
+            div.innerHTML = html;
+            body.appendChild(div);
+
+            div.querySelectorAll('select[multiple]').forEach(function(sel) {
+                initSelectize(sel);
+            });
+        });
+
+        // Remove category parent row
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('cat-parent-row-delete')) {
+                e.target.closest('.cat-parent-row').remove();
             }
         });
 
