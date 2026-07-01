@@ -1,5 +1,10 @@
 # Release Notes for Akeneo
 
+## 1.0.15 - 2026-07-01
+
+### Fixed
+- Fixed inaccurate batch counts on large product syncs (e.g. "batch 32 of 28"). Only product identifiers are now queued, with each product fetched on demand, so batches process correctly instead of one item at a time.
+
 ## 1.0.14 - 2026-06-22
 
 ### Added

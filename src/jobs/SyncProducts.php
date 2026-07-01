@@ -12,14 +12,14 @@ class SyncProducts extends BaseBatchedJob
 {
     public int $sourceId;
     public bool $syncImages = true;
-    public array $products = [];
+    public array $identifiers = [];
     public int $batchSize = 50;
     public string $syncStartedAt = '';
     public bool $isTest = false;
 
     protected function loadData(): Batchable
     {
-        return new ArrayBatchable($this->products);
+        return new ArrayBatchable($this->identifiers);
     }
 
     protected function processItem(mixed $item): void
@@ -31,7 +31,19 @@ class SyncProducts extends BaseBatchedJob
             return;
         }
 
-        Plugin::getInstance()->sync->createEntryFromMappings($source, $item, $this->syncImages, $this->isTest);
+        // Fetch the full product payload on demand. Keeping only identifiers in
+        // the job payload keeps memory flat so batches process their full size
+        // instead of aborting after one item.
+        try {
+            $product = Plugin::getInstance()->sync->getClient()->getProductApi()->get($item);
+        } catch (\Throwable $e) {
+            $message = "Failed to fetch product '{$item}' from Akeneo: " . $e->getMessage();
+            Plugin::log($message);
+            Plugin::getInstance()->sync->recordSyncLog($source->id, $item, null, 'fail', $message, $this->isTest);
+            return;
+        }
+
+        Plugin::getInstance()->sync->createEntryFromMappings($source, $product, $this->syncImages, $this->isTest);
     }
 
     protected function after(): void
@@ -59,7 +71,7 @@ class SyncProducts extends BaseBatchedJob
     protected function defaultDescription(): ?string
     {
         return Craft::t('akeneo', 'Syncing {count} products from Akeneo', [
-            'count' => count($this->products),
+            'count' => count($this->identifiers),
         ]);
     }
 }

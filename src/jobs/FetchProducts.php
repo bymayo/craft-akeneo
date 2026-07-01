@@ -34,15 +34,26 @@ class FetchProducts extends BaseJob
         $pageSize = $this->limit !== null ? min($this->limit, $settings->syncPageSize) : $settings->syncPageSize;
         $currentPage = $sync->getClient()->getProductApi()->listPerPage($pageSize, true, $queryParams);
 
-        $allProducts = [];
+        // Collect only product identifiers here — the full product payload is
+        // fetched per-item in SyncProducts. Carrying the entire dataset through
+        // the queue spikes memory and makes Craft's batched job abort each batch
+        // after a single item (see SyncProducts).
+        $identifiers = [];
         $pageCount = 0;
 
         do {
-            $allProducts = array_merge($allProducts, $currentPage->getItems());
+            foreach ($currentPage->getItems() as $product) {
+                $identifier = $product['identifier'] ?? $product['code'] ?? null;
 
-            if ($this->limit !== null && count($allProducts) >= $this->limit) {
-                $allProducts = array_slice($allProducts, 0, $this->limit);
-                break;
+                if ($identifier === null) {
+                    continue;
+                }
+
+                $identifiers[] = $identifier;
+
+                if ($this->limit !== null && count($identifiers) >= $this->limit) {
+                    break 2;
+                }
             }
 
             $currentPage = $currentPage->getNextPage();
@@ -53,17 +64,17 @@ class FetchProducts extends BaseJob
             }
         } while ($currentPage !== null);
 
-        if (empty($allProducts)) {
+        if (empty($identifiers)) {
             Plugin::log("No products found for source '{$source->name}'");
             return;
         }
 
-        Plugin::log("Fetched {$source->name} - Total Products: " . count($allProducts));
+        Plugin::log("Fetched {$source->name} - Total Products: " . count($identifiers));
 
         Plugin::pushJob(new SyncProducts([
             'sourceId' => $source->id,
             'syncImages' => $this->syncImages,
-            'products' => $allProducts,
+            'identifiers' => $identifiers,
             'syncStartedAt' => $syncStartedAt,
             'isTest' => $this->isTest,
         ]));
