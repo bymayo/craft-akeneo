@@ -419,7 +419,7 @@ class Sync extends Component
                         }
                     } else {
                         // Table field
-                        $tableData = $this->resolveTableRows($decoded, $values, $attributeTypes, $locale);
+                        $tableData = $this->resolveTableRows($decoded, $values, $attributeTypes, $locale, $source->excludeEmptyRows);
                         $element->setFieldValue($handle, $tableData);
                     }
                 } else {
@@ -656,12 +656,15 @@ class Sync extends Component
         );
     }
 
-    private function resolveTableRows(array $rows, array $values, array $attributeTypes, string $locale = 'en_GB'): array
+    private function resolveTableRows(array $rows, array $values, array $attributeTypes, string $locale = 'en_GB', bool $excludeEmptyRows = false): array
     {
         $tableData = [];
 
         foreach ($rows as $row) {
             $rowData = [];
+            $hasStaticValue = false;
+            $hasAkeneoMapping = false;
+            $hasAkeneoValue = false;
 
             foreach ($row as $colId => $colMapping) {
                 $static = $colMapping['static'] ?? '';
@@ -669,24 +672,31 @@ class Sync extends Component
 
                 if (!empty($static)) {
                     $rowData[$colId] = $static;
+                    $hasStaticValue = true;
                 } elseif (!empty($akeneo)) {
+                    $hasAkeneoMapping = true;
                     $resolved = $this->resolveMappingValue($akeneo, $values, $attributeTypes, $locale);
                     $rowData[$colId] = $resolved !== null ? (string) $resolved : '';
+                    if ($rowData[$colId] !== '') {
+                        $hasAkeneoValue = true;
+                    }
                 } else {
                     $rowData[$colId] = '';
                 }
             }
 
-            // Only include rows that have at least one non-empty value
-            $hasData = false;
-            foreach ($rowData as $val) {
-                if ($val !== '') {
-                    $hasData = true;
-                    break;
-                }
+            // Default: include any row that has at least one non-empty value
+            // (static labels count). When excluding empty rows, a row that maps
+            // Akeneo attributes but resolves none of them is dropped, so
+            // static-label-only rows (e.g. "Product Length" with no value) are
+            // skipped rather than imported blank. Purely static rows are kept.
+            $include = $hasStaticValue || $hasAkeneoValue;
+
+            if ($excludeEmptyRows && $hasAkeneoMapping && !$hasAkeneoValue) {
+                $include = false;
             }
 
-            if ($hasData) {
+            if ($include) {
                 $tableData[] = $rowData;
             }
         }
@@ -702,11 +712,16 @@ class Sync extends Component
         foreach ($matrixData as $entryTypeHandle => $entryRows) {
             foreach ($entryRows as $row) {
                 $fields = [];
+                // Track whether this block maps any Akeneo attributes and whether
+                // any of them resolved to a value, so empty blocks can be dropped.
+                $hasAkeneoMapping = false;
+                $hasAkeneoValue = false;
 
                 foreach ($row as $fieldHandle => $fieldValue) {
                     // Nested array field (table rows, multi-asset, or multi-entries/categories)
                     if (is_array($fieldValue)) {
                         if (!empty($fieldValue) && is_string($fieldValue[0] ?? null)) {
+                            $hasAkeneoMapping = true;
                             $nestedField = $this->getNestedField($source, $matrixFieldHandle, $entryTypeHandle, $fieldHandle);
 
                             if ($nestedField instanceof EntriesField) {
@@ -724,6 +739,7 @@ class Sync extends Component
                                 }
                                 if (!empty($allIds)) {
                                     $fields[$fieldHandle] = $allIds;
+                                    $hasAkeneoValue = true;
                                 }
                             } elseif ($nestedField instanceof CategoriesField) {
                                 // Multi-categories (array of akeneo codes)
@@ -740,6 +756,7 @@ class Sync extends Component
                                 }
                                 if (!empty($allIds)) {
                                     $fields[$fieldHandle] = $allIds;
+                                    $hasAkeneoValue = true;
                                 }
                             } else {
                                 // Multi-asset field (array of akeneo codes)
@@ -752,12 +769,18 @@ class Sync extends Component
                                     }
                                     if (!empty($allAssetIds)) {
                                         $fields[$fieldHandle] = $allAssetIds;
+                                        $hasAkeneoValue = true;
                                     }
                                 }
                             }
                         } else {
                             // Table field (array of row objects)
-                            $fields[$fieldHandle] = $this->resolveTableRows($fieldValue, $values, $attributeTypes, $locale);
+                            $hasAkeneoMapping = true;
+                            $tableRows = $this->resolveTableRows($fieldValue, $values, $attributeTypes, $locale, $source->excludeEmptyRows);
+                            $fields[$fieldHandle] = $tableRows;
+                            if (!empty($tableRows)) {
+                                $hasAkeneoValue = true;
+                            }
                         }
                         continue;
                     }
@@ -772,17 +795,20 @@ class Sync extends Component
                     $attrType = $attributeTypes[$fieldValue] ?? 'other';
 
                     if ($attrType === 'pim_catalog_asset_collection') {
+                        $hasAkeneoMapping = true;
                         if ($syncImages) {
                             $volume = $matrixFieldHandle ? $this->getVolumeForField($source, $fieldHandle, $matrixFieldHandle, $entryTypeHandle) : null;
                             $assetIds = $this->resolveAssetField($fieldValue, $values, $volume);
                             if (!empty($assetIds)) {
                                 $fields[$fieldHandle] = $assetIds;
+                                $hasAkeneoValue = true;
                             }
                         }
                         continue;
                     }
 
                     // Regular Akeneo attribute
+                    $hasAkeneoMapping = true;
                     $resolved = Plugin::getInstance()->attributes->resolveValue(
                         $fieldValue, $attrType, $values, $this->client, $locale
                     );
@@ -798,10 +824,16 @@ class Sync extends Component
                         }
 
                         $fields[$fieldHandle] = $resolved;
+                        $hasAkeneoValue = true;
                     }
                 }
 
-                if (!empty($fields)) {
+                // Drop blocks that map Akeneo attributes but resolved none of
+                // them, so empty blocks aren't created. Blocks with only static
+                // values are kept.
+                $dropEmpty = $source->excludeEmptyRows && $hasAkeneoMapping && !$hasAkeneoValue;
+
+                if (!empty($fields) && !$dropEmpty) {
                     $result['new' . $blockIndex] = [
                         'type' => $entryTypeHandle,
                         'enabled' => true,

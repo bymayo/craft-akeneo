@@ -186,6 +186,7 @@ class Sources extends Component
             $record->akeneoLocale = $source->akeneoLocale;
             $record->siteId = $source->siteId;
             $record->filters = $source->filters;
+            $record->excludeEmptyRows = $source->excludeEmptyRows;
 
             $record->save(false);
 
@@ -399,6 +400,7 @@ class Sources extends Component
                 'akeneoLocale' => $source->akeneoLocale,
                 'siteHandle' => $siteHandle,
                 'filters' => $source->filters ? json_decode($source->filters, true) : null,
+                'excludeEmptyRows' => $source->excludeEmptyRows,
             ],
             'fieldMappings' => $mappings,
         ];
@@ -439,6 +441,7 @@ class Sources extends Component
         $source->orphanedEntryAction = $sourceData['orphanedEntryAction'] ?? 'doNothing';
         $source->entryIdentifier = $sourceData['entryIdentifier'] ?? null;
         $source->akeneoLocale = $sourceData['akeneoLocale'] ?? null;
+        $source->excludeEmptyRows = (bool) ($sourceData['excludeEmptyRows'] ?? false);
 
         // Re-resolve the site by handle; fall back to the primary site if missing.
         $siteHandle = $sourceData['siteHandle'] ?? null;
@@ -800,6 +803,7 @@ class Sources extends Component
         $source->akeneoLocale = $record->akeneoLocale;
         $source->siteId = $record->siteId ? (int) $record->siteId : null;
         $source->filters = $record->filters;
+        $source->excludeEmptyRows = (bool) $record->excludeEmptyRows;
         $source->lastSyncedAt = $record->lastSyncedAt;
         $source->uid = $record->uid;
         $source->dateCreated = $record->dateCreated;

@@ -77,6 +77,15 @@
         errors: source.getErrors('orphanedEntryAction'),
     }) }}
 
+    {{ forms.lightswitchField({
+        label: 'Exclude Empty Rows'|t('akeneo'),
+        instructions: 'When syncing to Table or Matrix fields, skip any row/block whose Akeneo-mapped values are all empty (e.g. a row with a static label but no data).'|t('akeneo'),
+        id: 'excludeEmptyRows',
+        name: 'excludeEmptyRows',
+        on: source.excludeEmptyRows ?? false,
+        errors: source.getErrors('excludeEmptyRows'),
+    }) }}
+
     {% if source.id and identifierOptions is defined and identifierOptions|length %}
         {{ forms.selectField({
             label: 'Entry Identifier'|t('akeneo'),

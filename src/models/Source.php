@@ -15,6 +15,7 @@ class Source extends Model
     public ?string $akeneoLocale = null;
     public ?int $siteId = null;
     public ?string $filters = null;
+    public bool $excludeEmptyRows = false;
     public ?string $lastSyncedAt = null;
     public ?string $uid = null;
     public ?string $dateCreated = null;
@@ -27,6 +28,7 @@ class Source extends Model
             [['entryIdentifier', 'akeneoLocale'], 'required', 'when' => fn($model) => $model->id !== null],
             ['type', 'in', 'range' => ['section', 'commerceProductType']],
             ['orphanedEntryAction', 'in', 'range' => ['doNothing', 'disable', 'delete']],
+            ['excludeEmptyRows', 'boolean'],
         ];
     }
 }

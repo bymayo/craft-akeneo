@@ -105,6 +105,7 @@ class SourcesController extends Controller
         $source->orphanedEntryAction = $request->getBodyParam('orphanedEntryAction', 'doNothing');
         $source->entryIdentifier = $request->getBodyParam('entryIdentifier') ?: null;
         $source->akeneoLocale = $request->getBodyParam('akeneoLocale') ?: null;
+        $source->excludeEmptyRows = (bool) $request->getBodyParam('excludeEmptyRows');
 
         $siteIdParam = $request->getBodyParam('siteId');
         $source->siteId = $siteIdParam ? (int) $siteIdParam : null;
