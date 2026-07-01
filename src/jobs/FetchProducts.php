@@ -71,10 +71,16 @@ class FetchProducts extends BaseJob
 
         Plugin::log("Fetched {$source->name} - Total Products: " . count($identifiers));
 
+        // Treat the whole sync as a single batch so Craft's batched job doesn't
+        // append a misleading "(batch X of Y)" to the description. The job still
+        // re-spawns itself whenever a run hits the memory/TTR guard (carrying
+        // itemOffset forward), but because totalBatches collapses to 1, no batch
+        // suffix is shown — just the accurate "X of Y" item progress.
         Plugin::pushJob(new SyncProducts([
             'sourceId' => $source->id,
             'syncImages' => $this->syncImages,
             'identifiers' => $identifiers,
+            'batchSize' => count($identifiers),
             'syncStartedAt' => $syncStartedAt,
             'isTest' => $this->isTest,
         ]));

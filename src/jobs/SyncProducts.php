@@ -13,6 +13,9 @@ class SyncProducts extends BaseBatchedJob
     public int $sourceId;
     public bool $syncImages = true;
     public array $identifiers = [];
+    // Set to the total identifier count by FetchProducts so the whole sync is
+    // one batch (no "(batch X of Y)" suffix). The memory/TTR guards in
+    // BaseBatchedJob::execute() still chunk the actual work across re-spawns.
     public int $batchSize = 50;
     public string $syncStartedAt = '';
     public bool $isTest = false;
