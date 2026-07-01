@@ -1,12 +1,15 @@
 # Release Notes for Akeneo
 
+## 1.0.17 - 2026-07-01
+
+### Fixed
+- Fixed misleading batch counts still showing on large product syncs (e.g. "batch 90 of 28"). Each batch now has a longer time-to-reserve so all of its items finish in a single run instead of the run breaking early and spawning extra jobs, keeping the "batch X of Y" count accurate.
+- Fixed the "Test Sync" action label showing a hardcoded "10 products" instead of the configured Test Sync Limit.
+
 ## 1.0.16 - 2026-07-01
 
 ### Added
 - Added an "Exclude Empty Rows" setting per source. When enabled, Table and Matrix fields skip any row/block whose Akeneo-mapped values all resolve empty, so rows with only a static label and no data are no longer imported blank.
-
-### Fixed
-- Fixed misleading batch counts still showing on large product syncs (e.g. "batch 90 of 28"). Syncs now run as a single batch, so the queue shows the sync description with accurate item progress instead of an incorrect batch count.
 
 ## 1.0.15 - 2026-07-01
 

@@ -13,10 +13,13 @@ class SyncProducts extends BaseBatchedJob
     public int $sourceId;
     public bool $syncImages = true;
     public array $identifiers = [];
-    // Set to the total identifier count by FetchProducts so the whole sync is
-    // one batch (no "(batch X of Y)" suffix). The memory/TTR guards in
-    // BaseBatchedJob::execute() still chunk the actual work across re-spawns.
     public int $batchSize = 50;
+    // Give each batch plenty of time to process all its items before Craft's
+    // time guard breaks the run early. An early break spawns an extra job and
+    // increments batchIndex, which is what pushed the batch counter past its
+    // total (e.g. "batch 90 of 28"). A generous TTR keeps a full batch of 50 in
+    // a single run so batchIndex stays in step with the true batch count.
+    public ?int $ttr = 3600;
     public string $syncStartedAt = '';
     public bool $isTest = false;
 
