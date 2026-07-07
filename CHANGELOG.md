@@ -1,5 +1,12 @@
 # Release Notes for Akeneo
 
+## 1.0.19 - 2026-07-07
+
+### Changed
+- Visual tweaks to the field mapping screen (tighter spacing and consistent table heading styling).
+- Table field mappings now show the "Column / Akeneo Attribute" header only on the first row instead of repeating it on every row.
+- The Static Value input in field mappings — including Table columns and Matrix fields — is now hidden unless "Static Value" is selected, instead of showing a disabled input, and the "Static Value" column heading has been removed.
+
 ## 1.0.18 - 2026-07-07
 
 ### Added

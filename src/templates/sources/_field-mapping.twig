@@ -41,6 +41,9 @@
     <input type="hidden" name="sourceId" value="{{ source.id }}">
 
     {% css %}
+        /* Give every table heading the same darker fill (the main mapping table
+           otherwise uses Craft's lighter default header style). */
+        .akeneo-mapping-table thead th,
         .table-mapping-row table.data thead th,
         .matrix-entry-row table.data thead th {
             background-color: var(--gray-100) !important;
@@ -53,7 +56,7 @@
         .akeneo-section-heading td,
         .akeneo-section-heading:hover td {
             border-top: 1px solid var(--gray-200) !important;
-            padding-top: 8px !important;
+            padding-top: 4px !important;
             padding-bottom: 0 !important;
             background-color: transparent !important;
         }
@@ -78,12 +81,12 @@
         .akeneo-mapping-table > thead > tr > th:nth-child(4) {
             width: 33%;
         }
-        .table-mapping-row table.data thead th:nth-child(1),
+        /* Table-row column widths come from each table's <colgroup> (so they
+           apply whether or not the header row is shown). Matrix-entry tables keep
+           header-driven widths since their header always shows. */
         .matrix-entry-row table.data thead th:nth-child(1) {
             width: 24%;
         }
-        .table-mapping-row table.data thead th:nth-child(2),
-        .table-mapping-row table.data thead th:nth-child(3),
         .matrix-entry-row table.data thead th:nth-child(2),
         .matrix-entry-row table.data thead th:nth-child(3) {
             width: 38%;
@@ -146,6 +149,32 @@
         .matrix-entry-row > .move.icon {
             cursor: move;
         }
+        /* Show the column header only on the first row card; subsequent rows
+           (and reordered ones — :first-child re-evaluates on DOM change) hide it
+           so the header isn't repeated down the list. */
+        .table-mapping-row:not(.cat-parent-row):not(:first-child) > table > thead {
+            display: none;
+        }
+        /* Tighter padding on the mapping row cards (overrides the inline 12px). */
+        .table-mapping-row,
+        .matrix-entry-row {
+            padding: 8px !important;
+        }
+        .table-mapping-row > table.data th,
+        .table-mapping-row > table.data td {
+            padding-top: 4px;
+            padding-bottom: 4px;
+        }
+        /* Slightly tighter row spacing on the main mapping table. */
+        .akeneo-mapping-table > tbody > tr > td {
+            padding-top: 5px;
+            padding-bottom: 5px;
+        }
+        /* Drop the trailing margin on the last Matrix entry-type box so the gap
+           below it matches the gap above (the cell's top padding). */
+        .matrix-entry-type:last-child {
+            margin-bottom: 0 !important;
+        }
     {% endcss %}
 
     {% if akeneoError %}
@@ -193,7 +222,7 @@
                 <th>Field</th>
                 <th>Fieldtype</th>
                 <th>Akeneo Attribute</th>
-                <th>Static Value</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -231,11 +260,12 @@
                                         <div class="table-mapping-row" style="border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;">
                                             <a class="move icon table-row-move" title="Reorder" style="position: absolute; top: 6px; right: 34px;"></a><a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>
                                             <table class="data fullwidth">
+                                                <colgroup><col style="width: 20%;"><col style="width: 40%;"><col style="width: 40%;"></colgroup>
                                                 <thead>
                                                     <tr>
                                                         <th>Column</th>
                                                         <th>Akeneo Attribute</th>
-                                                        <th>Static Value</th>
+                                                        <th></th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -251,7 +281,7 @@
                                                                 {{ h.akeneoSelect('mappings[' ~ idx ~ '][tableRows][' ~ loop.parent.loop.index0 ~ '][' ~ colId ~ '][akeneo]', colValue, akeneoSelectOptions, 'full') }}
                                                             </td>
                                                             <td>
-                                                                <input type="text" name="mappings[{{ idx }}][tableRows][{{ loop.parent.loop.index0 }}][{{ colId }}][static]" value="{{ colStatic }}" class="fullwidth text" placeholder="Enter value…">
+                                                                <input type="text" name="mappings[{{ idx }}][tableRows][{{ loop.parent.loop.index0 }}][{{ colId }}][static]" value="{{ colStatic }}" class="fullwidth text table-static-value-input" placeholder="Enter value…" {% if colValue != '__static__' %}disabled style="display: none;"{% endif %}>
                                                             </td>
                                                         </tr>
                                                     {% endfor %}
@@ -292,7 +322,7 @@
                                                         <tr>
                                                             <th>Field</th>
                                                             <th>Akeneo Attribute</th>
-                                                            <th>Static Value</th>
+                                                            <th></th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -310,11 +340,12 @@
                                                                                     <div class="table-mapping-row" style="border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;">
                                                                                         <a class="move icon table-row-move" title="Reorder" style="position: absolute; top: 6px; right: 34px;"></a><a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>
                                                                                         <table class="data fullwidth">
+                                                                                            <colgroup><col style="width: 20%;"><col style="width: 40%;"><col style="width: 40%;"></colgroup>
                                                                                             <thead>
                                                                                                 <tr>
                                                                                                     <th>Column</th>
                                                                                                     <th>Akeneo Attribute</th>
-                                                                                                    <th>Static Value</th>
+                                                                                                    <th></th>
                                                                                                 </tr>
                                                                                             </thead>
                                                                                             <tbody>
@@ -330,7 +361,7 @@
                                                                                                             {{ h.akeneoSelect('mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][tableRows][' ~ tableRowIdx ~ '][' ~ colId ~ '][akeneo]', colValue, akeneoSelectOptions, 'full') }}
                                                                                                         </td>
                                                                                                         <td>
-                                                                                                            <input type="text" name="mappings[{{ idx }}][matrix][{{ entryType.handle }}][{{ matrixRowIdx }}][{{ nestedField.handle }}][tableRows][{{ tableRowIdx }}][{{ colId }}][static]" value="{{ colStatic }}" class="fullwidth text" placeholder="Enter value…">
+                                                                                                            <input type="text" name="mappings[{{ idx }}][matrix][{{ entryType.handle }}][{{ matrixRowIdx }}][{{ nestedField.handle }}][tableRows][{{ tableRowIdx }}][{{ colId }}][static]" value="{{ colStatic }}" class="fullwidth text table-static-value-input" placeholder="Enter value…" {% if colValue != '__static__' %}disabled style="display: none;"{% endif %}>
                                                                                                         </td>
                                                                                                     </tr>
                                                                                                 {% endfor %}
@@ -412,7 +443,7 @@
                                                                             {{ h.akeneoSelect('mappings[' ~ idx ~ '][matrix][' ~ entryType.handle ~ '][' ~ matrixRowIdx ~ '][' ~ nestedField.handle ~ '][akeneo]', nestedSelectVal, akeneoSelectOptions, 'full') }}
                                                                         </td>
                                                                         <td>
-                                                                            <input type="text" name="mappings[{{ idx }}][matrix][{{ entryType.handle }}][{{ matrixRowIdx }}][{{ nestedField.handle }}][static]" value="{{ nestedStaticVal }}" class="fullwidth text matrix-static-value-input" placeholder="Enter value…" {% if not nestedIsStatic %}disabled{% endif %}>
+                                                                            <input type="text" name="mappings[{{ idx }}][matrix][{{ entryType.handle }}][{{ matrixRowIdx }}][{{ nestedField.handle }}][static]" value="{{ nestedStaticVal }}" class="fullwidth text matrix-static-value-input" placeholder="Enter value…" {% if not nestedIsStatic %}disabled style="display: none;"{% endif %}>
                                                                         </td>
                                                                     </tr>
                                                                 {% endif %}
@@ -589,7 +620,7 @@
                                 {{ h.akeneoSelect('mappings[' ~ idx ~ '][akeneoAttribute]', selectVal, akeneoSelectOptions, 'full', 'akeneo-select-' ~ idx) }}
                             </td>
                             <td>
-                                <input type="text" name="mappings[{{ idx }}][staticValue]" value="{{ staticVal }}" class="fullwidth text static-value-input" data-field-index="{{ idx }}" placeholder="Enter value…" {% if not isStatic %}disabled{% endif %}>
+                                <input type="text" name="mappings[{{ idx }}][staticValue]" value="{{ staticVal }}" class="fullwidth text static-value-input" data-field-index="{{ idx }}" placeholder="Enter value…" {% if not isStatic %}disabled style="display: none;"{% endif %}>
                             </td>
                         </tr>
                     {% endif %}
@@ -793,9 +824,11 @@
 
             if (this.value === '__static__') {
                 staticInput.disabled = false;
+                staticInput.style.display = '';
                 staticInput.focus();
             } else {
                 staticInput.disabled = true;
+                staticInput.style.display = 'none';
                 staticInput.value = '';
             }
         });
@@ -811,9 +844,29 @@
 
             if (this.value === '__static__') {
                 staticInput.disabled = false;
+                staticInput.style.display = '';
                 staticInput.focus();
             } else {
                 staticInput.disabled = true;
+                staticInput.style.display = 'none';
+                staticInput.value = '';
+            }
+        });
+
+        // Toggle static value input for table columns (top-level and nested in matrix)
+        $(document).on('change', 'select[name*="[tableRows]"][name*="[akeneo]"]', function() {
+            var tr = $(this).closest('tr')[0];
+            if (!tr) return;
+            var staticInput = tr.querySelector('.table-static-value-input');
+            if (!staticInput) return;
+
+            if (this.value === '__static__') {
+                staticInput.disabled = false;
+                staticInput.style.display = '';
+                staticInput.focus();
+            } else {
+                staticInput.disabled = true;
+                staticInput.style.display = 'none';
                 staticInput.value = '';
             }
         });
@@ -856,13 +909,13 @@
             div.style.cssText = 'border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;';
 
             var html = '<a class="move icon table-row-move" title="Reorder" style="position: absolute; top: 6px; right: 34px;"></a><a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>';
-            html += '<table class="data fullwidth"><thead><tr><th>Column</th><th>Akeneo Attribute</th><th>Static Value</th></tr></thead><tbody>';
+            html += '<table class="data fullwidth"><colgroup><col style="width: 20%;"><col style="width: 40%;"><col style="width: 40%;"></colgroup><thead><tr><th>Column</th><th>Akeneo Attribute</th><th></th></tr></thead><tbody>';
 
             for (var colId in columns) {
                 html += '<tr>';
                 html += '<td style="vertical-align: middle; white-space: nowrap;"><strong>' + columns[colId].heading + '</strong><br><code style="font-size: 10px;">' + columns[colId].handle + '</code></td>';
                 html += '<td><div class="select fullwidth akeneo-lazy-wrap"><select name="' + namePrefix + '[' + colId + '][akeneo]" class="akeneo-lazy-select" data-options="full"><option value="__none__" selected>Don\'t import</option></select></div></td>';
-                html += '<td><input type="text" name="' + namePrefix + '[' + colId + '][static]" value="" class="fullwidth text" placeholder="Enter value…"></td>';
+                html += '<td><input type="text" name="' + namePrefix + '[' + colId + '][static]" value="" class="fullwidth text table-static-value-input" placeholder="Enter value…" style="display: none;" disabled></td>';
                 html += '</tr>';
             }
 
@@ -900,7 +953,7 @@
             div.style.cssText = 'border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;';
 
             var html = '<a class="move icon matrix-entry-move" title="Reorder" style="position: absolute; top: 6px; right: 34px;"></a><a class="delete icon matrix-entry-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>';
-            html += '<table class="data fullwidth"><thead><tr><th>Field</th><th>Akeneo Attribute</th><th>Static Value</th></tr></thead><tbody>';
+            html += '<table class="data fullwidth"><thead><tr><th>Field</th><th>Akeneo Attribute</th><th></th></tr></thead><tbody>';
 
             entryTypeConfig.fields.forEach(function(field) {
                 if (field.type === 'table') {
@@ -937,7 +990,7 @@
                     html += '<tr>';
                     html += '<td style="vertical-align: middle; white-space: nowrap;"><strong>' + field.name + '</strong><br><code style="font-size: 10px;">' + field.handle + '</code></td>';
                     html += '<td><div class="select fullwidth akeneo-lazy-wrap"><select name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][akeneo]" class="akeneo-lazy-select" data-options="full"><option value="__none__" selected>Don\'t import</option></select></div></td>';
-                    html += '<td><input type="text" name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][static]" value="" class="fullwidth text matrix-static-value-input" placeholder="Enter value…" disabled></td>';
+                    html += '<td><input type="text" name="mappings[' + fieldIndex + '][matrix][' + entryTypeHandle + '][' + rowIndex + '][' + field.handle + '][static]" value="" class="fullwidth text matrix-static-value-input" placeholder="Enter value…" style="display: none;" disabled></td>';
                     html += '</tr>';
                 }
             });
