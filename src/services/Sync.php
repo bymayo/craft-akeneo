@@ -22,6 +22,7 @@ use craft\fields\Assets as AssetsField;
 use craft\fields\Entries as EntriesField;
 use craft\fields\Categories as CategoriesField;
 use craft\helpers\Assets as AssetsHelper;
+use craft\helpers\DateTimeHelper;
 use craft\helpers\StringHelper;
 use craft\models\Volume;
 
@@ -510,6 +511,23 @@ class Sync extends Component
             $element->title = $value;
         } elseif ($handle === 'slug') {
             $element->slug = $value;
+        } elseif ($handle === 'author') {
+            $authorId = $this->resolveAuthorId($value);
+            if ($authorId !== null && $element instanceof Entry) {
+                $element->setAuthorId($authorId);
+            }
+        } elseif ($handle === 'postDate') {
+            $date = DateTimeHelper::toDateTime($value);
+            if ($date !== false) {
+                $element->postDate = $date;
+            }
+        } elseif ($handle === 'expiryDate') {
+            $date = DateTimeHelper::toDateTime($value);
+            if ($date !== false) {
+                $element->expiryDate = $date;
+            }
+        } elseif ($handle === 'enabled') {
+            $element->enabled = $this->parseBoolValue($value);
         } else {
             $field = Plugin::getInstance()->sources->resolveSourceField($source, $handle);
 
@@ -521,6 +539,43 @@ class Sync extends Component
 
             $element->setFieldValue($handle, $value);
         }
+    }
+
+    /**
+     * Resolve a mapped value to a Craft user ID. Accepts a user ID, username or
+     * email address.
+     */
+    private function resolveAuthorId(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $value = (string) $value;
+
+        if (ctype_digit($value)) {
+            $user = Craft::$app->getUsers()->getUserById((int) $value);
+            if ($user) {
+                return $user->id;
+            }
+        }
+
+        $user = Craft::$app->getUsers()->getUserByUsernameOrEmail($value);
+
+        return $user?->id;
+    }
+
+    /**
+     * Parse a mapped value into a boolean, accepting yes/no, true/false and
+     * 1/0 (case-insensitive). Anything unrecognised is treated as false.
+     */
+    private function parseBoolValue(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return in_array(strtolower(trim((string) $value)), ['1', 'true', 'yes', 'y', 'on', 'enabled'], true);
     }
 
     private function resolveEntriesFieldValue(EntriesField $field, mixed $value): array

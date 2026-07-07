@@ -1,5 +1,16 @@
 # Release Notes for Akeneo
 
+## 1.0.18 - 2026-07-07
+
+### Added
+- Added Author, Post Date, Expiry Date and Enabled to the native element fields you can map, alongside Title and Slug. Author accepts a user ID, username or email; Post Date and Expiry Date accept any parseable date; Enabled accepts yes/no, true/false or 1/0. Author is available for entry sources only.
+- Added drag handles to Table and Matrix field mappings so rows and blocks can be reordered up/down.
+
+### Changed
+- On source pages (Settings and Field Mapping), Cmd/Ctrl+S now saves and stays on the page, while the Save button saves and returns to Sources.
+- Renamed the "Sync Images" actions and related labels to "Sync Assets" throughout the control panel and settings.
+- Renamed the `akeneo/sync/images-only` console command to `akeneo/sync/assets-only`. The old `images-only` command still works but is deprecated.
+
 ## 1.0.17 - 2026-07-01
 
 ### Fixed

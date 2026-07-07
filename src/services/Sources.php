@@ -539,6 +539,16 @@ class Sources extends Component
             ['handle' => 'slug', 'name' => 'Slug', 'type' => 'field', 'supported' => true, 'fieldType' => 'Slug', 'group' => 'element', 'required' => true],
         ];
 
+        // Native element fields (author is entries-only; post date and status
+        // apply to both entries and Commerce products).
+        if ($source->type === 'section') {
+            $fields[] = ['handle' => 'author', 'name' => 'Author', 'type' => 'field', 'supported' => true, 'fieldType' => 'User', 'group' => 'element'];
+        }
+
+        $fields[] = ['handle' => 'postDate', 'name' => 'Post Date', 'type' => 'field', 'supported' => true, 'fieldType' => 'Date', 'group' => 'element'];
+        $fields[] = ['handle' => 'expiryDate', 'name' => 'Expiry Date', 'type' => 'field', 'supported' => true, 'fieldType' => 'Date', 'group' => 'element'];
+        $fields[] = ['handle' => 'enabled', 'name' => 'Enabled', 'type' => 'field', 'supported' => true, 'fieldType' => 'Lightswitch', 'group' => 'element'];
+
         if ($source->type === 'commerceProductType') {
             $fields[] = ['handle' => 'variantTitle', 'name' => 'Title', 'type' => 'field', 'supported' => true, 'fieldType' => 'Title', 'group' => 'variant'];
             $fields[] = ['handle' => 'sku', 'name' => 'SKU', 'type' => 'field', 'supported' => true, 'fieldType' => 'SKU', 'group' => 'variant'];

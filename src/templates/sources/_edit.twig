@@ -4,6 +4,11 @@
 
 {% set fullPageForm = true %}
 
+{# Cmd/Ctrl+S saves and stays on this page (a new source lands on its edit
+   page); the Save button uses the form's redirect (Sources index). #}
+{% set saveShortcutRedirect = source.id ? 'akeneo/sources/' ~ source.id : 'akeneo/sources/{id}' %}
+{% set retainScrollOnSaveShortcut = true %}
+
 {% set title = title %}
 {% set selectedSubnavItem = 'sources' %}
 
@@ -32,7 +37,7 @@
 {% block content %}
 
     <input type="hidden" name="action" value="akeneo/sources/save">
-    {{ redirectInput(source.id ? 'akeneo/sources/' ~ source.id : 'akeneo/sources') }}
+    {{ redirectInput('akeneo/sources') }}
 
     {% if source.id %}
         <input type="hidden" name="sourceId" value="{{ source.id }}">

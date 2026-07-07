@@ -5,6 +5,11 @@
 
 {% set fullPageForm = true %}
 
+{# Cmd/Ctrl+S saves and stays on this page; the Save button uses the form's
+   redirect (Sources index). #}
+{% set saveShortcutRedirect = 'akeneo/sources/' ~ source.id ~ '/field-mapping' %}
+{% set retainScrollOnSaveShortcut = true %}
+
 {% set title = title %}
 {% set selectedSubnavItem = 'sources' %}
 
@@ -124,7 +129,9 @@
             max-width: 100%;
         }
         .table-mapping-row > .delete.icon,
-        .matrix-entry-row > .delete.icon {
+        .matrix-entry-row > .delete.icon,
+        .table-mapping-row > .move.icon,
+        .matrix-entry-row > .move.icon {
             z-index: 1;
             display: flex;
             align-items: center;
@@ -134,6 +141,10 @@
             background-color: var(--white);
             border: 1px solid var(--gray-200);
             border-radius: var(--small-border-radius, 4px);
+        }
+        .table-mapping-row > .move.icon,
+        .matrix-entry-row > .move.icon {
+            cursor: move;
         }
     {% endcss %}
 
@@ -218,7 +229,7 @@
                                 <div class="table-rows-body">
                                     {% for row in tableRows %}
                                         <div class="table-mapping-row" style="border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;">
-                                            <a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>
+                                            <a class="move icon table-row-move" title="Reorder" style="position: absolute; top: 6px; right: 34px;"></a><a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>
                                             <table class="data fullwidth">
                                                 <thead>
                                                     <tr>
@@ -275,7 +286,7 @@
                                         {% for row in etRows %}
                                             {% set matrixRowIdx = loop.index0 %}
                                             <div class="matrix-entry-row" style="border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;">
-                                                <a class="delete icon matrix-entry-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>
+                                                <a class="move icon matrix-entry-move" title="Reorder" style="position: absolute; top: 6px; right: 34px;"></a><a class="delete icon matrix-entry-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>
                                                 <table class="data fullwidth">
                                                     <thead>
                                                         <tr>
@@ -297,7 +308,7 @@
                                                                                 {% for tableRow in nestedTableRows %}
                                                                                     {% set tableRowIdx = loop.index0 %}
                                                                                     <div class="table-mapping-row" style="border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;">
-                                                                                        <a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>
+                                                                                        <a class="move icon table-row-move" title="Reorder" style="position: absolute; top: 6px; right: 34px;"></a><a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>
                                                                                         <table class="data fullwidth">
                                                                                             <thead>
                                                                                                 <tr>
@@ -844,7 +855,7 @@
             div.className = 'table-mapping-row';
             div.style.cssText = 'border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;';
 
-            var html = '<a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>';
+            var html = '<a class="move icon table-row-move" title="Reorder" style="position: absolute; top: 6px; right: 34px;"></a><a class="delete icon table-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>';
             html += '<table class="data fullwidth"><thead><tr><th>Column</th><th>Akeneo Attribute</th><th>Static Value</th></tr></thead><tbody>';
 
             for (var colId in columns) {
@@ -865,6 +876,8 @@
             div.querySelectorAll('select[multiple]').forEach(function(sel) {
                 initSelectize(sel);
             });
+
+            registerSortableRow(body, div, '.table-mapping-row', '.table-row-move');
         });
 
         // Add matrix entry row
@@ -886,7 +899,7 @@
             div.className = 'matrix-entry-row';
             div.style.cssText = 'border: 1px solid var(--gray-200); border-radius: 4px; padding: 12px; margin-bottom: 8px; position: relative;';
 
-            var html = '<a class="delete icon matrix-entry-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>';
+            var html = '<a class="move icon matrix-entry-move" title="Reorder" style="position: absolute; top: 6px; right: 34px;"></a><a class="delete icon matrix-entry-row-delete" title="Remove" style="position: absolute; top: 6px; right: 6px;"></a>';
             html += '<table class="data fullwidth"><thead><tr><th>Field</th><th>Akeneo Attribute</th><th>Static Value</th></tr></thead><tbody>';
 
             entryTypeConfig.fields.forEach(function(field) {
@@ -939,6 +952,8 @@
             div.querySelectorAll('select[multiple]').forEach(function(sel) {
                 initSelectize(sel);
             });
+
+            registerSortableRow(body, div, '.matrix-entry-row', '.matrix-entry-move');
         });
 
         // Remove table row
@@ -1010,6 +1025,38 @@
         // Init selectize on multi-select asset fields on page load
         document.querySelectorAll('select[multiple]').forEach(function(sel) {
             initSelectize(sel);
+        });
+
+        // ---- Drag-to-reorder for table rows and matrix entry rows ----
+        // Rows are saved in DOM order (the controller re-indexes the submitted
+        // rows), so reordering the nodes is all that's needed — no name rewrite.
+        function makeSortable(container, itemSelector, handleSelector) {
+            if (!container || container._akeneoDragSort || typeof Garnish === 'undefined') {
+                return;
+            }
+            container._akeneoDragSort = new Garnish.DragSort($(container).children(itemSelector), {
+                handle: handleSelector,
+                axis: 'y',
+                collapseDraggees: true
+            });
+        }
+
+        function registerSortableRow(container, row, itemSelector, handleSelector) {
+            if (!container || typeof Garnish === 'undefined') {
+                return;
+            }
+            if (container._akeneoDragSort) {
+                container._akeneoDragSort.addItems($(row));
+            } else {
+                makeSortable(container, itemSelector, handleSelector);
+            }
+        }
+
+        document.querySelectorAll('.table-rows-body').forEach(function(body) {
+            makeSortable(body, '.table-mapping-row', '.table-row-move');
+        });
+        document.querySelectorAll('.matrix-entry-rows').forEach(function(rows) {
+            makeSortable(rows, '.matrix-entry-row', '.matrix-entry-move');
         });
     })(jQuery);
     {% endjs %}

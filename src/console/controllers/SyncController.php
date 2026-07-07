@@ -32,7 +32,7 @@ class SyncController extends Controller
     }
 
     /**
-     * Sync product data and images
+     * Sync product data and assets
      */
     public function actionAll(): int
     {
@@ -48,11 +48,19 @@ class SyncController extends Controller
     }
 
     /**
-     * Sync product images only
+     * Sync product assets only
+     */
+    public function actionAssetsOnly(): int
+    {
+        return $this->runSync(true);
+    }
+
+    /**
+     * @deprecated in 1.0.18. Use [[actionAssetsOnly()]] (akeneo/sync/assets-only) instead.
      */
     public function actionImagesOnly(): int
     {
-        return $this->runSync(true);
+        return $this->actionAssetsOnly();
     }
 
     /**

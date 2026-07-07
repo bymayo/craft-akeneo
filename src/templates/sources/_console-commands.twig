@@ -28,7 +28,7 @@
         </div>
         <div class="input">
             <div style="margin-bottom: 8px;">
-                <label class="light" style="display: block; margin-bottom: 4px;">Sync All (Data + Images)</label>
+                <label class="light" style="display: block; margin-bottom: 4px;">Sync All (Data + Assets)</label>
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/all --source={{ source.id }}">
                     <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
@@ -42,9 +42,9 @@
                 </div>
             </div>
             <div style="margin-bottom: 8px;">
-                <label class="light" style="display: block; margin-bottom: 4px;">Sync Images Only</label>
+                <label class="light" style="display: block; margin-bottom: 4px;">Sync Assets Only</label>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/images-only --source={{ source.id }}">
+                    <input type="text" class="text fullwidth code" readonly value="php craft akeneo/sync/assets-only --source={{ source.id }}">
                     <button type="button" class="btn" onclick="navigator.clipboard.writeText(this.previousElementSibling.value); Craft.cp.displayNotice('Copied to clipboard.');">Copy</button>
                 </div>
             </div>
